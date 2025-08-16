@@ -3,934 +3,113 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Lateral Photobooth</title>
+    <title>Photobooth Lateral</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
+    <link rel="stylesheet" href="style.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <style>
-      :root {
-        --primary-color: #4c0013;
-        --accent-color: #f97316;
-        --light-color: #ffffff;
-        --dark-bg-color: rgba(0, 0, 0, 0.2);
-        --border-color: rgba(255, 255, 255, 0.5);
-        --font-family: "Poppins", "Helvetica Neue", sans-serif;
-        --main-border-radius: 1rem;
-        --pill-border-radius: 999px;
-      }
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-      html {
-        height: 100%;
-      }
-      body {
-        font-family: var(--font-family);
-        background-color: var(--primary-color);
-        background-image: url("cookies.png");
-        background-repeat: no-repeat;
-        background-size: cover;
-        color: var(--light-color);
-        display: flex;
-        justify-content: center;
-        align-items: flex-start;
-        min-height: 100vh;
-        padding: 2rem 1rem;
-        overflow-y: auto;
-      }
-      .page {
-        width: 100%;
-        max-width: 390px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 1.25rem;
-      }
-      .hidden {
-        display: none !important;
-      }
-
-      .blur-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.3);
-        backdrop-filter: blur(5px);
-        -webkit-backdrop-filter: blur(5px);
-        z-index: 1000;
-        opacity: 0;
-        transition: opacity 0.3s ease;
-        pointer-events: none;
-      }
-      .blur-overlay.visible {
-        opacity: 1;
-        pointer-events: auto;
-      }
-
-      .title {
-        font-size: 2rem;
-        font-weight: 700;
-        text-align: center;
-        flex-shrink: 0;
-      }
-      .content-area {
-        width: 100%;
-        flex-grow: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        min-height: 0;
-      }
-      .top-options {
-        display: flex;
-        justify-content: center;
-        gap: 0.75rem;
-        width: 100%;
-        flex-shrink: 0;
-      }
-      .custom-select {
-        position: relative;
-        flex: 1;
-        background-color: var(--dark-bg-color);
-        border: 2px solid transparent;
-        border-radius: var(--pill-border-radius);
-      }
-      .top-options .custom-select:first-child {
-        border-color: var(--light-color);
-      }
-      .custom-select select {
-        appearance: none;
-        -webkit-appearance: none;
-        width: 100%;
-        background-color: transparent;
-        border: none;
-        color: var(--light-color);
-        padding: 0.6rem 1.5rem;
-        border-radius: var(--pill-border-radius);
-        cursor: pointer;
-        font-size: 0.8rem;
-        font-weight: 500;
-        text-align: center;
-        text-align-last: center;
-      }
-      .custom-select select:focus {
-        outline: none;
-      }
-      .custom-select::after {
-        content: "▼";
-        position: absolute;
-        top: 50%;
-        right: 1rem;
-        transform: translateY(-50%) scale(0.6);
-        color: var(--light-color);
-        pointer-events: none;
-      }
-      .main-content-wrapper {
-        display: flex;
-        gap: 0.75rem;
-        width: 100%;
-        flex-grow: 1;
-        min-height: 0;
-      }
-      .left-column {
-        flex: 3;
-        display: flex;
-      }
-      .right-column {
-        flex: 1;
-        display: flex;
-      }
-      .camera-area {
-        width: 100%;
-        background-color: #111;
-        border: 4px solid var(--light-color);
-        border-radius: var(--main-border-radius);
-        overflow: hidden;
-        position: relative;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        aspect-ratio: 4 / 5;
-      }
-      #video-feed {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-        transform: scaleX(-1);
-        transition: filter 0.3s ease;
-      }
-      #timer-overlay {
-        position: absolute;
-        font-size: 7rem;
-        font-weight: 700;
-        color: white;
-        text-shadow: 0 0 25px black;
-        opacity: 0;
-        transform: scale(1.5);
-        transition: opacity 0.3s ease, transform 0.3s ease;
-      }
-      #timer-overlay.visible {
-        opacity: 1;
-        transform: scale(1);
-      }
-      #photo-canvas {
-        display: none;
-      }
-      .filter-bw {
-        filter: grayscale(100%);
-      }
-      .filter-vignette {
-        filter: sepia(30%) contrast(1.1) brightness(0.9);
-      }
-      .filter-grain::after {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background-image: url("https://i.imgur.com/G024j5Q.png");
-        opacity: 0.15;
-        pointer-events: none;
-        z-index: 1;
-      }
-      #thumbnails-container {
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        gap: 0.75rem;
-        width: 100%;
-        height: 100%;
-      }
-      .thumbnail-slot {
-        width: 100%;
-        aspect-ratio: 4 / 5;
-        background-color: var(--dark-bg-color);
-        border: 3px dashed var(--border-color);
-        border-radius: 12px;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        overflow: hidden;
-        transition: all 0.3s ease;
-        cursor: pointer;
-      }
-      .thumbnail-slot.selected {
-        border-color: var(--accent-color);
-        border-style: solid;
-        box-shadow: 0 0 10px var(--accent-color);
-      }
-      .thumbnail-slot.sortable-ghost {
-        opacity: 0.4;
-        border-style: solid;
-        border-color: var(--accent-color);
-      }
-      .thumbnail-slot.sortable-chosen {
-        cursor: grabbing;
-      }
-      .thumbnail-slot img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      }
-      .options-group {
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-      }
-      .options-container {
-        display: flex;
-        justify-content: center;
-        gap: 0.5rem;
-        width: 100%;
-        overflow-x: auto;
-        padding-bottom: 5px;
-      }
-      .options-container::-webkit-scrollbar {
-        height: 4px;
-      }
-      .options-container::-webkit-scrollbar-thumb {
-        background: var(--border-color);
-        border-radius: 4px;
-      }
-      .option-btn {
-        flex-shrink: 0;
-        background-color: var(--dark-bg-color);
-        border: none;
-        color: var(--light-color);
-        padding: 0.5rem 1rem;
-        border-radius: var(--pill-border-radius);
-        cursor: pointer;
-        font-size: 0.8rem;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        text-transform: capitalize;
-        position: relative;
-        z-index: 1;
-      }
-      .option-btn.is-focused {
-        z-index: 1001;
-      }
-      .option-btn.active {
-        background-color: var(--light-color);
-        color: var(--primary-color);
-        font-weight: 700;
-      }
-      .main-action-button {
-        width: 100%;
-        padding: 1rem;
-        font-size: 1rem;
-        font-weight: 700;
-        color: var(--primary-color);
-        background-color: var(--accent-color);
-        border: none;
-        border-radius: var(--main-border-radius);
-        cursor: pointer;
-        transition: transform 0.2s ease, box-shadow 0.3s ease;
-        flex-shrink: 0;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-      }
-      .main-action-button:hover {
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
-        transform: translateY(-2px);
-      }
-      .main-action-button:active {
-        transform: translateY(0) scale(0.98);
-      }
-      .main-action-button:disabled {
-        background-color: #ccc;
-        cursor: not-allowed;
-        box-shadow: none;
-      }
-      #preview-page {
-        gap: 1.5rem;
-      }
-      #final-photostrip-canvas {
-        border: 6px solid white;
-        border-radius: var(--main-border-radius);
-        background-color: #333;
-        max-width: 50%;
-        height: auto;
-      }
-      .action-buttons {
-        width: 100%;
-        max-width: 390px;
-        display: flex;
-        justify-content: center;
-        gap: 1rem;
-        padding: 0 1rem;
-      }
-      .primary-btn {
-        flex: 1;
-        padding: 1rem;
-        font-size: 1rem;
-        font-weight: 700;
-        color: var(--primary-color);
-        background-color: var(--accent-color);
-        border: none;
-        border-radius: var(--main-border-radius);
-        cursor: pointer;
-        transition: transform 0.2s ease;
-      }
-      .primary-btn:active {
-        transform: scale(0.98);
-      }
-      #camera-error-message {
-        display: none;
-        position: absolute;
-        text-align: center;
-        padding: 1rem;
-        color: white;
-        background-color: rgba(0, 0, 0, 0.7);
-        border-radius: var(--main-border-radius);
-        max-width: 90%;
-        z-index: 10;
-        font-size: 0.9rem;
-      }
-      .qr-modal-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.7);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 2000;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s ease;
-      }
-      .qr-modal-overlay.visible {
-        opacity: 1;
-        pointer-events: auto;
-      }
-      .qr-modal-content {
-        background-color: var(--light-color);
-        color: var(--primary-color);
-        padding: 2rem;
-        border-radius: var(--main-border-radius);
-        text-align: center;
-        transform: scale(0.9);
-        transition: transform 0.3s ease;
-      }
-      .qr-modal-overlay.visible .qr-modal-content {
-        transform: scale(1);
-      }
-      #qrcode-container {
-        padding: 1rem;
-        background-color: white;
-        border-radius: 8px;
-        margin-top: 1rem;
-        display: inline-block;
-        min-height: 216px;
-        min-width: 216px;
-      }
-      #qrcode-container img {
-        display: block;
-      }
-      .qr-modal-close-btn {
-        margin-top: 1.5rem;
-        padding: 0.5rem 1rem;
-        background: var(--dark-bg-color);
-        color: var(--light-color);
-        border: none;
-        border-radius: var(--pill-border-radius);
-        cursor: pointer;
-      }
-
-      /* --- CSS YANG DIPERBAIKI UNTUK UKURAN POP-UP --- */
-      #frame-preview-popup {
-        position: fixed;
-        border: 4px solid white;
-        border-radius: 8px;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
-        background-color: #333;
-        z-index: 1002;
-        transition: opacity 0.2s ease, transform 0.2s ease;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-
-        width: auto;
-        height: auto;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) scale(0.9);
-        opacity: 0;
-        visibility: hidden;
-        pointer-events: none;
-      }
-
-      #frame-preview-popup.visible {
-        transform: translate(-50%, -50%) scale(1);
-        opacity: 1;
-        visibility: visible;
-        pointer-events: auto;
-      }
-
-      #frame-preview-popup img {
-        display: block;
-        height: 250px; /* Atur tinggi tetap untuk gambar */
-        width: auto; /* Biarkan lebar menyesuaikan */
-        max-width: 80vw; /* Batas lebar maksimum agar tidak keluar layar */
-        border-radius: 4px;
-        object-fit: contain;
-      }
-      /* --- AKHIR DARI CSS YANG DIPERBAIKI --- */
-
-      .frame-preview-close-btn {
-        display: block;
-        position: absolute;
-        top: 5px;
-        right: 5px;
-        width: 30px;
-        height: 30px;
-        background-color: rgba(0, 0, 0, 0.5);
-        color: white;
-        border: 1px solid white;
-        border-radius: 50%;
-        font-size: 1.2rem;
-        font-weight: bold;
-        line-height: 1;
-        text-align: center;
-        cursor: pointer;
-        z-index: 1003;
-      }
-    </style>
   </head>
   <body>
-    <div id="photobooth-page" class="page">
-      <h1 class="title">Lateral Photobooth</h1>
-      <div class="content-area">
-        <div class="top-options">
-          <div class="custom-select">
-            <select id="layout-select">
+    <header class="header">
+      <div class="logo">
+        <a href="#">
+          <img src="assets/logo (Traced).png" alt="Logo Anda" height="30" />
+        </a>
+      </div>
+      <nav class="navigasi">
+        <ul>
+          <li><a href="#">About</a></li>
+          <li><a href="#">Contact</a></li>
+          <li><a href="#">Price</a></li>
+        </ul>
+      </nav>
+    </header>
+
+    <div id="halaman-utama" class="halaman">
+      <div class="area-konten">
+        <div class="opsi-atas">
+          <div class="pilihan-custom">
+            <label for="pilihan-tata-letak" class="label-pilihan-custom"
+              >3 Foto</label
+            >
+            <select id="pilihan-tata-letak">
               <option value="strip3">3 Foto</option>
               <option value="grid4">4 Foto</option>
             </select>
           </div>
-          <div class="custom-select">
-            <select id="timer-select">
-              <option value="0">0s Tertunda</option>
-              <option value="3">3s Tertunda</option>
-              <option value="5">5s Tertunda</option>
-              <option value="10">10s Tertunda</option>
+          <div class="pilihan-custom">
+            <label for="pilihan-timer" class="label-pilihan-custom"
+              >3d Tunda</label
+            >
+            <select id="pilihan-timer">
+              <option value="3">3d Tunda</option>
+              <option value="0">0d Tunda</option>
+              <option value="5">5d Tunda</option>
+              <option value="10">10d Tunda</option>
             </select>
           </div>
         </div>
-        <div class="main-content-wrapper">
-          <div class="left-column">
-            <div class="camera-area">
-              <video id="video-feed" autoplay playsinline></video>
-              <div id="timer-overlay"></div>
-              <canvas id="photo-canvas"></canvas>
-              <div id="camera-error-message">
+        <div class="pembungkus-konten-utama">
+          <div class="kolom-kiri">
+            <div class="area-kamera">
+              <video id="umpan-video" autoplay playsinline></video>
+              <div id="overlay-timer"></div>
+              <canvas id="kanvas-foto"></canvas>
+              <div id="pesan-error-kamera">
                 Kamera tidak dapat diakses.<br />Mohon berikan izin dan segarkan
                 halaman.
               </div>
             </div>
           </div>
-          <div class="right-column"><div id="thumbnails-container"></div></div>
-        </div>
-        <div class="options-group">
-          <div class="filter-options options-container">
-            <button class="option-btn active" data-filter="none">Normal</button
-            ><button class="option-btn" data-filter="bw">B&W</button
-            ><button class="option-btn" data-filter="vignette">Vignette</button
-            ><button class="option-btn" data-filter="grain">Grain</button>
+          <div class="kolom-kanan">
+            <div id="wadah-thumbnail"></div>
           </div>
-          <div class="frame-options options-container">
-            <button class="option-btn active" data-theme="none">
-              Tanpa Frame</button
-            ><button class="option-btn" data-frame="frames/Frame1.png">
-              Cookies</button
-            ><button class="option-btn" data-frame="frames/frame-film.png">
-              Film</button
-            ><button class="option-btn" data-frame="frames/frame-cookies.png">
+        </div>
+        <div class="grup-opsi">
+          <div class="opsi-filter wadah-opsi">
+            <button class="tombol-opsi aktif" data-filter="none">Normal</button>
+            <button class="tombol-opsi" data-filter="bw">H&P</button>
+            <button class="tombol-opsi" data-filter="vignette">Vignette</button>
+            <button class="tombol-opsi" data-filter="sepia">Sepia</button>
+          </div>
+          <div class="opsi-frame wadah-opsi">
+            <button class="tombol-opsi aktif" data-theme="none">
+              Tanpa Frame
+            </button>
+            <button class="tombol-opsi" data-frame="frames/Frame1.png">
+              Cookies
+            </button>
+            <button class="tombol-opsi" data-frame="frames/frame-film.png">
+              Film
+            </button>
+            <button class="tombol-opsi" data-frame="frames/frame-cookies.png">
               Pasta
             </button>
           </div>
         </div>
       </div>
-      <button id="main-action-button" class="main-action-button">
-        Mulai Foto
-      </button>
+      <button id="tombol-aksi-utama"></button>
     </div>
-    <div id="preview-page" class="page hidden">
-      <h1 class="title">Hasil Foto Anda</h1>
-      <canvas id="final-photostrip-canvas"></canvas>
-      <div class="action-buttons">
-        <button class="primary-btn" id="download-button">Unduh</button
-        ><button class="primary-btn" id="retake-all-button">Ulangi</button>
+
+    <div id="halaman-kedua" class="halaman kedua">
+      <h1 class="judul">Hasil Foto Anda</h1>
+      <canvas id="kanvas-photostrip-final"></canvas>
+      <div class="tombol-aksi-kedua">
+        <button class="tombol-primer" id="tombol-unduh">Unduh</button>
+        <button class="tombol-primer" id="tombol-ulangi-semua">Ulangi</button>
       </div>
     </div>
 
-    <div id="blur-overlay" class="blur-overlay"></div>
-    <div id="frame-preview-popup">
-      <img src="" alt="Frame Preview" />
-      <button class="frame-preview-close-btn">&times;</button>
+    <div id="overlay-blur" class="overlay-blur"></div>
+    <div id="popup-kedua-frame">
+      <img src="" alt="Pratinjau Frame" />
+      <button class="tombol-tutup-kedua-frame">&times;</button>
     </div>
 
-    <script>
-      document.addEventListener("DOMContentLoaded", () => {
-        const photoboothPage = document.getElementById("photobooth-page"),
-          previewPage = document.getElementById("preview-page"),
-          video = document.getElementById("video-feed"),
-          canvas = document.getElementById("photo-canvas"),
-          mainActionButton = document.getElementById("main-action-button"),
-          downloadButton = document.getElementById("download-button"),
-          retakeAllButton = document.getElementById("retake-all-button"),
-          timerSelect = document.getElementById("timer-select"),
-          layoutSelect = document.getElementById("layout-select"),
-          thumbnailsContainer = document.getElementById("thumbnails-container"),
-          timerOverlay = document.getElementById("timer-overlay"),
-          finalCanvas = document.getElementById("final-photostrip-canvas"),
-          cameraErrorMessage = document.getElementById("camera-error-message"),
-          blurOverlay = document.getElementById("blur-overlay"),
-          framePreviewPopup = document.getElementById("frame-preview-popup"),
-          framePreviewImage = framePreviewPopup.querySelector("img"),
-          framePreviewCloseBtn = framePreviewPopup.querySelector(
-            ".frame-preview-close-btn"
-          );
-
-        const LAYOUTS = { strip3: { count: 3 }, grid4: { count: 4 } };
-        let currentLayoutId = "strip3",
-          selectedSlot = 0,
-          photos = [],
-          isCountingDown = false,
-          selectedFrame = "none",
-          selectedTheme = "none",
-          sortableInstance = null;
-
-        async function init() {
-          await setupCamera();
-          setLayout(layoutSelect.value);
-          const activeFrame = document.querySelector(
-            ".frame-options .option-btn.active"
-          );
-          if (activeFrame) {
-            selectedFrame = activeFrame.dataset.frame || "none";
-            selectedTheme = activeFrame.dataset.theme || "none";
-          }
-        }
-        async function setupCamera() {
-          try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-              video: {
-                width: { ideal: 1280 },
-                height: { ideal: 720 },
-                facingMode: "user",
-              },
-              audio: false,
-            });
-            video.srcObject = stream;
-            cameraErrorMessage.style.display = "none";
-          } catch (err) {
-            console.error("Error accessing camera: ", err);
-            cameraErrorMessage.style.display = "block";
-          }
-        }
-        function setLayout(layoutId) {
-          currentLayoutId = layoutId;
-          const layout = LAYOUTS[layoutId];
-          photos = new Array(layout.count).fill(null);
-          thumbnailsContainer.innerHTML = "";
-          for (let i = 0; i < layout.count; i++) {
-            const slot = document.createElement("div");
-            slot.className = "thumbnail-slot";
-            slot.dataset.slot = i;
-            slot.addEventListener("click", () => selectSlotForRetake(i));
-            thumbnailsContainer.appendChild(slot);
-          }
-          updateActionButton();
-          selectSlotForRetake(0);
-          initSortable();
-        }
-        function initSortable() {
-          if (sortableInstance) sortableInstance.destroy();
-          sortableInstance = new Sortable(thumbnailsContainer, {
-            animation: 150,
-            ghostClass: "sortable-ghost",
-            chosenClass: "sortable-chosen",
-            onEnd: () => {
-              const reorderedPhotos = [];
-              thumbnailsContainer
-                .querySelectorAll(".thumbnail-slot")
-                .forEach((slot, index) => {
-                  slot.dataset.slot = index;
-                  const img = slot.querySelector("img");
-                  reorderedPhotos.push(img ? img.src : null);
-                });
-              photos = reorderedPhotos;
-            },
-          });
-        }
-        function handleMainActionClick() {
-          const isReadyForPreview =
-            photos.filter((p) => p !== null).length ===
-            LAYOUTS[currentLayoutId].count;
-          if (isReadyForPreview) {
-            showPreview();
-            return;
-          }
-          if (isCountingDown) return;
-          const timerDuration = parseInt(timerSelect.value, 10);
-          if (timerDuration > 0) startCountdown(timerDuration);
-          else takePhoto();
-        }
-        function startCountdown(seconds) {
-          isCountingDown = true;
-          mainActionButton.disabled = true;
-          let counter = seconds;
-          timerOverlay.textContent = counter;
-          timerOverlay.classList.add("visible");
-          const interval = setInterval(() => {
-            counter--;
-            timerOverlay.textContent = counter;
-            if (counter <= 0) {
-              clearInterval(interval);
-              timerOverlay.classList.remove("visible");
-              takePhoto();
-              isCountingDown = false;
-              mainActionButton.disabled = false;
-            }
-          }, 1000);
-        }
-        function takePhoto() {
-          if (!video.srcObject) return;
-          const context = canvas.getContext("2d");
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          context.filter = getComputedStyle(video).filter;
-          context.translate(canvas.width, 0);
-          context.scale(-1, 1);
-          context.drawImage(video, 0, 0, canvas.width, canvas.height);
-          photos[selectedSlot] = canvas.toDataURL("image/jpeg", 0.9);
-          displayPhotoInSlot(selectedSlot, photos[selectedSlot]);
-          updateActionButton();
-          selectSlotForRetake(findNextEmptySlot());
-        }
-        function findNextEmptySlot() {
-          const nextSlot = photos.indexOf(null);
-          return nextSlot === -1 ? selectedSlot : nextSlot;
-        }
-        function displayPhotoInSlot(slotIndex, dataUrl) {
-          const slot = document.querySelector(
-            `.thumbnail-slot[data-slot='${slotIndex}']`
-          );
-          slot.innerHTML = `<img src="${dataUrl}" />`;
-        }
-        function selectSlotForRetake(slotIndex) {
-          selectedSlot = slotIndex;
-          document.querySelectorAll(".thumbnail-slot").forEach((slot) => {
-            slot.classList.toggle(
-              "selected",
-              parseInt(slot.dataset.slot) === slotIndex
-            );
-          });
-        }
-        function updateActionButton() {
-          const isFull = photos.every((p) => p !== null);
-          mainActionButton.textContent = isFull ? "Berikutnya" : "Mulai Foto";
-        }
-        async function showPreview() {
-          photoboothPage.classList.add("hidden");
-          previewPage.classList.remove("hidden");
-          await generateFinalImage();
-        }
-        function generateFinalImage() {
-          return new Promise(async (resolve) => {
-            const ctx = finalCanvas.getContext("2d");
-            const layout = LAYOUTS[currentLayoutId];
-            const photoImages = await Promise.all(
-              photos
-                .filter((p) => p)
-                .map(
-                  (p) =>
-                    new Promise((res) => {
-                      const img = new Image();
-                      img.onload = () => res(img);
-                      img.onerror = () => res(null);
-                      img.src = p;
-                    })
-                )
-            );
-            if (layout.count === 3) {
-              finalCanvas.width = 660;
-              finalCanvas.height = 2370;
-            } else {
-              finalCanvas.width = 1290;
-              finalCanvas.height = 1590;
-            }
-            if (selectedTheme === "cookies" && layout.count === 3) {
-              const cookieImg = await new Promise((res) => {
-                const img = new Image();
-                img.crossOrigin = "anonymous";
-                img.onload = () => res(img);
-                img.onerror = () => res(null);
-                img.src = "https://i.imgur.com/bZ1b6A2.png";
-              });
-              ctx.fillStyle = "#4D1A24";
-              ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
-              if (cookieImg) {
-                for (let i = 0; i < 40; i++) {
-                  const size = Math.random() * 150 + 50;
-                  const x = Math.random() * finalCanvas.width;
-                  const y = Math.random() * finalCanvas.height;
-                  ctx.drawImage(
-                    cookieImg,
-                    x - size / 2,
-                    y - size / 2,
-                    size,
-                    size
-                  );
-                }
-              }
-              ctx.fillStyle = "white";
-              ctx.textAlign = "center";
-              ctx.font = "bold 52px Poppins, sans-serif";
-              ctx.fillText("Lateral.", finalCanvas.width / 2, 170);
-              ctx.font = "38px Poppins, sans-serif";
-              ctx.fillText(
-                "we all love it",
-                finalCanvas.width / 2,
-                finalCanvas.height - 130
-              );
-              const photoWidth = 540,
-                photoHeight = 720,
-                startY = 270,
-                gap = 45,
-                borderWidth = 10;
-              photoImages.forEach((img, index) => {
-                if (!img) return;
-                const xPos = (finalCanvas.width - photoWidth) / 2;
-                const yPos = startY + index * (photoHeight + gap);
-                ctx.fillStyle = "white";
-                ctx.fillRect(
-                  xPos - borderWidth,
-                  yPos - borderWidth,
-                  photoWidth + borderWidth * 2,
-                  photoHeight + borderWidth * 2
-                );
-                const destRatio = photoWidth / photoHeight,
-                  srcRatio = img.width / img.height;
-                let sx = 0,
-                  sy = 0,
-                  sWidth = img.width,
-                  sHeight = img.height;
-                if (srcRatio > destRatio) {
-                  sWidth = img.height * destRatio;
-                  sx = (img.width - sWidth) / 2;
-                } else {
-                  sHeight = img.width / destRatio;
-                  sy = (img.height - sHeight) / 2;
-                }
-                ctx.drawImage(
-                  img,
-                  sx,
-                  sy,
-                  sWidth,
-                  sHeight,
-                  xPos,
-                  yPos,
-                  photoWidth,
-                  photoHeight
-                );
-              });
-            } else {
-              const frameImage = await new Promise((res) => {
-                if (selectedFrame === "none") return res(null);
-                const img = new Image();
-                img.onload = () => res(img);
-                img.onerror = () => {
-                  console.error("Gagal muat frame:", selectedFrame);
-                  res(null);
-                };
-                img.src = selectedFrame;
-              });
-              ctx.fillStyle = "white";
-              ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
-              photoImages.forEach((img, index) => {
-                if (!img) return;
-                let x, y, w, h;
-                if (layout.count === 3) {
-                  w = 528;
-                  h = 612;
-                  x = 66;
-                  y = 237 + (h + 30) * index;
-                } else {
-                  w = 501;
-                  h = 621;
-                  const col = index % 2,
-                    row = Math.floor(index / 2);
-                  x = 129 + (w + 30) * col;
-                  y = 159 + (h + 30) * row;
-                }
-                const destRatio = w / h,
-                  srcRatio = img.width / img.height;
-                let sx = 0,
-                  sy = 0,
-                  sWidth = img.width,
-                  sHeight = img.height;
-                if (srcRatio > destRatio) {
-                  sWidth = img.height * destRatio;
-                  sx = (img.width - sWidth) / 2;
-                } else {
-                  sHeight = img.width / destRatio;
-                  sy = (img.height - sHeight) / 2;
-                }
-                ctx.drawImage(img, sx, sy, sWidth, sHeight, x, y, w, h);
-              });
-              if (frameImage)
-                ctx.drawImage(
-                  frameImage,
-                  0,
-                  0,
-                  finalCanvas.width,
-                  finalCanvas.height
-                );
-            }
-            resolve();
-          });
-        }
-        function downloadImage() {
-          const link = document.createElement("a");
-          link.download = `lateral-photobooth-${Date.now()}.png`;
-          link.href = finalCanvas.toDataURL("image/png");
-          link.click();
-        }
-        function goBackToPhotobooth() {
-          previewPage.classList.add("hidden");
-          photoboothPage.classList.remove("hidden");
-          setLayout(layoutSelect.value);
-        }
-
-        // --- Event Listeners ---
-        init();
-        mainActionButton.addEventListener("click", handleMainActionClick);
-        downloadButton.addEventListener("click", downloadImage);
-        retakeAllButton.addEventListener("click", goBackToPhotobooth);
-        layoutSelect.addEventListener("change", (e) =>
-          setLayout(e.target.value)
-        );
-        document
-          .querySelector(".filter-options")
-          .addEventListener("click", (e) => {
-            if (e.target.matches(".option-btn")) {
-              document
-                .querySelectorAll(".filter-options .option-btn")
-                .forEach((btn) => btn.classList.remove("active"));
-              e.target.classList.add("active");
-              const filter = e.target.dataset.filter,
-                cameraArea = document.querySelector(".camera-area");
-              video.className = "";
-              cameraArea.classList.toggle("filter-grain", filter === "grain");
-              if (filter !== "none" && filter !== "grain")
-                video.classList.add(`filter-${filter}`);
-            }
-          });
-
-        const frameOptionsContainer = document.querySelector(".frame-options");
-
-        function hideFramePreview() {
-          blurOverlay.classList.remove("visible");
-          framePreviewPopup.classList.remove("visible");
-        }
-
-        frameOptionsContainer.addEventListener("click", (e) => {
-          const button = e.target.closest(".option-btn");
-          if (button) {
-            document
-              .querySelectorAll(".frame-options .option-btn")
-              .forEach((btn) => btn.classList.remove("active"));
-            button.classList.add("active");
-            selectedFrame = button.dataset.frame || "none";
-            selectedTheme = button.dataset.theme || "none";
-
-            const frameSrc = button.dataset.frame;
-            if (frameSrc && frameSrc !== "none") {
-              framePreviewImage.src = frameSrc;
-              blurOverlay.classList.add("visible");
-              framePreviewPopup.classList.add("visible");
-            }
-          }
-        });
-
-        blurOverlay.addEventListener("click", hideFramePreview);
-        framePreviewCloseBtn.addEventListener("click", hideFramePreview);
-      });
-    </script>
+    <script src="script.js"></script>
   </body>
 </html>

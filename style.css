@@ -1,13 +1,15 @@
-/* CSS Reset & Basic Setup */
+/* === Variabel Global === */
 :root {
-  --primary-color: #000000; /* Warna hitam */
-  --light-color: #fdf5e6; /* Warna putih gading */
-  --accent-color: #ff7d0c; /* Warna aksen oranye */
-  --border-radius: 16px; /* Rounded corners */
-  --font-main: "Helvetica Neue", sans-serif;
-  --font-display: "Helvetica Neue", bold;
+  --warna-primer: #ffffff;
+  --warna-aksen: #f97116;
+  --warna-terang: #ffffff;
+  --warna-border-kaca: rgba(255, 255, 255, 0.2);
+  --font-utama: "Poppins", "Helvetica Neue", sans-serif;
+  --radius-border-utama: 1rem;
+  --radius-border-pil: 999px;
 }
 
+/* === Reset Dasar === */
 * {
   margin: 0;
   padding: 0;
@@ -18,115 +20,178 @@ html {
   height: 100%;
 }
 
+/* === Body & Latar Belakang === */
 body {
-  font-family: var(--font-main);
-  background-color: var(--primary-color);
-  /* Menggunakan gambar lokal 'cookies.png' sebagai contoh */
-  background-image: url("cookies.png");
-  background-repeat: no-repeat;
-  background-position: center center;
-  background-attachment: fixed;
-  background-size: cover;
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
-  padding: 1.5rem 1rem;
-  color: white;
-  min-height: 100%;
-  overflow-y: auto;
-}
+  font-family: var(--font-utama);
+  color: var(--warna-primer);
 
-/* Page Containers */
-.page {
-  width: 100%;
-  max-width: 500px;
+  /* SILAKAN UBAH ATAU TAMBAHKAN BACKGROUND ANDA DI SINI */
+  background-image: url("assets/gradient.png");
+  background-color: #2c2c2c; /* Warna fallback jika gambar tidak ada */
+  background-size: cover;
+  background-position: center;
+
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1rem;
+  min-height: 100vh;
+  padding: 1.5rem;
+  overflow-y: auto;
 }
 
-.hidden {
-  display: none !important;
-}
+/* Animasi Gradien Dihapus */
 
+/* === Header Responsif Otomatis === */
 .header {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
   position: relative;
-  margin-bottom: 0.5rem;
-}
-
-.title {
-  font-family: var(--font-display);
-  font-size: clamp(2rem, 7vw, 3rem);
-  font-weight: bold;
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
-  text-align: center;
-}
-
-/* Top Options Bar */
-.top-options {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
   width: 100%;
-  background-color: rgba(0, 0, 0, 0.1);
-  padding: 0.75rem;
-  border-radius: var(--border-radius);
+  max-width: 550px;
+  padding: 1rem 0;
+  margin-bottom: 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.logo {
   flex-shrink: 0;
 }
 
-.custom-select {
+.logo img {
+  height: 30px;
+}
+
+.navigasi ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.navigasi a {
+  text-decoration: none;
+  color: var(--warna-primer);
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: color 0.3s ease;
+}
+
+.navigasi a:hover {
+  color: var(--warna-aksen);
+}
+
+/* === Konten Utama === */
+.halaman {
+  width: 100%;
+  max-width: 390px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.kedua {
+  display: none !important;
+}
+
+.area-konten {
+  width: 100%;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 0;
+}
+
+.opsi-atas {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* === Dropdown Glassmorphism === */
+.pilihan-custom {
   position: relative;
   flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.6rem 1.5rem;
+  border-radius: var(--radius-border-pil);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--warna-border-kaca);
 }
 
-.custom-select select {
-  appearance: none;
-  -webkit-appearance: none;
-  width: 100%;
-  background-color: transparent;
-  border: none;
-  color: var(--light-color);
-  padding: 0.5rem;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  font-size: 0.9rem;
+.label-pilihan-custom {
+  font-size: 0.8rem;
   font-weight: 500;
-  text-align: center;
+  pointer-events: none;
 }
 
-.custom-select::after {
+.pilihan-custom::after {
   content: "▼";
   position: absolute;
   top: 50%;
-  right: 0.5rem;
-  transform: translateY(-50%);
+  right: 1rem;
+  transform: translateY(-50%) scale(0.6);
+  color: var(--warna-terang);
   pointer-events: none;
-  color: var(--light-color);
-  font-size: 0.7rem;
 }
 
-/* Camera Area */
-.camera-area {
-  width: 80%;
-  aspect-ratio: 4 / 5;
-  background-color: #111;
-  border: 4px solid var(--light-color);
-  border-radius: var(--border-radius);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+.pilihan-custom select {
+  appearance: none;
+  -webkit-appearance: none;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* === Area Kamera & Thumbnail === */
+.pembungkus-konten-utama {
+  display: flex;
+  gap: 0.75rem;
+  width: 100%;
+  flex-grow: 1;
+  min-height: 0;
+}
+
+.kolom-kiri {
+  flex: 3;
+  display: flex;
+}
+.kolom-kanan {
+  flex: 1;
+  display: flex;
+}
+
+.area-kamera {
+  width: 100%;
+  background-color: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--warna-border-kaca);
+  border-radius: var(--radius-border-utama);
   overflow: hidden;
   position: relative;
   display: flex;
   justify-content: center;
   align-items: center;
-  flex-shrink: 0;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  aspect-ratio: 4 / 5;
 }
 
-#video-feed {
+#umpan-video {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -134,201 +199,271 @@ body {
   transition: filter 0.3s ease;
 }
 
-#timer-overlay {
+/* === Overlay & Pesan Error === */
+#overlay-timer {
   position: absolute;
-  font-size: 10rem;
-  font-weight: bold;
+  font-size: 7rem;
+  font-weight: 700;
   color: white;
-  text-shadow: 0 0 20px black;
+  text-shadow: 0 0 25px black;
   opacity: 0;
   transform: scale(1.5);
   transition: opacity 0.3s ease, transform 0.3s ease;
 }
-
-#timer-overlay.visible {
+#overlay-timer.visible {
   opacity: 1;
   transform: scale(1);
 }
+#kanvas-foto {
+  display: none;
+}
 
-#camera-error-message {
+#pesan-error-kamera {
   display: none;
   position: absolute;
   text-align: center;
   padding: 1rem;
   color: white;
   background-color: rgba(0, 0, 0, 0.7);
-  border-radius: var(--border-radius);
+  border-radius: var(--radius-border-utama);
   max-width: 90%;
   z-index: 10;
+  font-size: 0.9rem;
 }
 
-#photo-canvas {
-  display: none;
-}
-
+/* === Filter Video === */
 .filter-bw {
   filter: grayscale(100%);
 }
 .filter-vignette {
-  filter: sepia(30%) contrast(1.1) brightness(0.9) saturate(1.2) blur(0.2px);
+  filter: sepia(30%) contrast(1.1) brightness(0.9);
 }
-.filter-grain::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: url("cookies.png");
-  opacity: 0.15;
-  pointer-events: none;
-  z-index: 1;
+.filter-sepia {
+  filter: sepia(100%);
 }
 
-/* Thumbnails & Options Container */
-.options-container {
+/* === Thumbnail Glassmorphism === */
+#wadah-thumbnail {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  justify-content: space-between;
   gap: 0.75rem;
   width: 100%;
-  overflow-x: auto;
-  padding: 0.25rem;
-  flex-shrink: 0;
-}
-.options-container::-webkit-scrollbar {
-  height: 5px;
-}
-.options-container::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 10px;
-}
-.options-container::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 10px;
-}
-.options-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
-}
-.filter-options::-webkit-scrollbar {
-  display: none;
+  height: 100%;
 }
 
-.thumbnail-slot {
-  flex-shrink: 0;
-  width: 60px;
-  height: 77.5px;
-  background-color: rgba(255, 255, 255, 0.1);
-  border: 3px dashed rgba(255, 255, 255, 0.5);
-  border-radius: var(--border-radius);
+.slot-thumbnail {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  border-radius: 12px;
   display: flex;
   justify-content: center;
   align-items: center;
   overflow: hidden;
   transition: all 0.3s ease;
   cursor: pointer;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--warna-border-kaca);
 }
-
-.thumbnail-slot.selected {
-  border-color: var(--accent-color);
-  border-style: solid;
-  transform: scale(1.05);
+.slot-thumbnail.terpilih {
+  border-color: var(--warna-aksen);
+  box-shadow: 0 0 10px var(--warna-aksen);
 }
-
-.thumbnail-slot img {
+.slot-thumbnail img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.filter-btn {
+/* === Tombol Opsi Glassmorphism === */
+.grup-opsi {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.wadah-opsi {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  overflow-x: auto;
+  padding-bottom: 5px;
+}
+.wadah-opsi::-webkit-scrollbar {
+  height: 4px;
+}
+.wadah-opsi::-webkit-scrollbar-thumb {
+  background: var(--warna-border-kaca);
+  border-radius: 4px;
+}
+
+.tombol-opsi {
   flex-shrink: 0;
-  background-color: rgba(255, 255, 255, 0.1);
-  border: 2px solid transparent;
-  color: var(--light-color);
-  padding: 0.6rem 1.2rem;
-  border-radius: 999px; /* Pill shape */
+  color: var(--warna-primer);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-border-pil);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   font-weight: 500;
   transition: all 0.3s ease;
+  text-transform: capitalize;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--warna-border-kaca);
 }
-.filter-btn.active {
-  background-color: var(--light-color);
-  color: var(--primary-color);
-  border-color: var(--primary-color);
+.tombol-opsi.aktif,
+.tombol-opsi:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.4);
 }
 
-.frame-btn {
-  flex-shrink: 0;
-  width: 60px;
-  height: 77.5px;
-  border: 3px solid transparent;
-  border-radius: var(--border-radius);
+/* === Tombol Shutter Bulat === */
+#tombol-aksi-utama {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  border: none;
   cursor: pointer;
-  padding: 2px;
-  background-color: rgba(255, 255, 255, 0.1);
-  transition: all 0.3s ease;
+  position: relative;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  transition: transform 0.2s ease;
+  font-size: 0;
+  padding: 0;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  margin-top: 1rem;
 }
-.frame-btn.active {
-  border-color: var(--accent-color);
+#tombol-aksi-utama:hover {
   transform: scale(1.05);
 }
-.frame-btn img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: calc(var(--border-radius) - 2px);
+#tombol-aksi-utama:active {
+  transform: scale(0.95);
 }
-
-/* Main Action Button */
-.main-action-button {
-  width: 80%;
-  padding: 1rem;
-  font-size: 1.1rem;
-  font-weight: bold;
-  color: var(--primary-color);
-  background-color: var(--accent-color);
-  border: none;
-  border-radius: var(--border-radius);
-  cursor: pointer;
-  transition: transform 0.2s ease, background-color 0.3s ease;
-  flex-shrink: 0;
-}
-.main-action-button:active {
-  transform: scale(0.98);
-}
-.main-action-button:disabled {
+#tombol-aksi-utama:disabled {
   background-color: #ccc;
   cursor: not-allowed;
+  box-shadow: none;
+}
+#tombol-aksi-utama::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 55px;
+  height: 55px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
 }
 
-.action-buttons {
-  width: 80%;
+/* === Halaman Hasil & Pop-up === */
+#halaman-kedua {
+  gap: 1.5rem;
+}
+#kanvas-photostrip-final {
+  border: 6px solid white;
+  border-radius: var(--radius-border-utama);
+  background-color: #333;
+  max-width: 50%;
+  height: auto;
+}
+.tombol-aksi-kedua {
+  width: 100%;
+  max-width: 390px;
   display: flex;
   justify-content: center;
   gap: 1rem;
+  padding: 0 1rem;
 }
-
-.primary-btn {
+.tombol-primer {
   flex: 1;
   padding: 1rem;
-  font-size: 1.1rem;
-  font-weight: bold;
-  color: var(--primary-color);
-  background-color: var(--accent-color);
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+  background-color: var(--warna-aksen);
   border: none;
-  border-radius: var(--border-radius);
+  border-radius: var(--radius-border-utama);
   cursor: pointer;
   transition: transform 0.2s ease;
 }
-.primary-btn:active {
+.tombol-primer:active {
   transform: scale(0.98);
 }
 
-#final-photostrip-canvas {
-  border: 8px solid white;
-  border-radius: var(--border-radius);
+.overlay-blur {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  z-index: 1000;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.overlay-blur.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#popup-kedua-frame {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.9);
+  border: 4px solid white;
+  border-radius: 8px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
   background-color: #333;
-  max-width: 90%;
+  z-index: 1002;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
   height: auto;
+}
+#popup-kedua-frame.visible {
+  transform: translate(-50%, -50%) scale(1);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+#popup-kedua-frame img {
+  display: block;
+  height: 250px;
+  width: auto;
+  max-width: 80vw;
+  border-radius: 4px;
+  object-fit: contain;
+}
+.tombol-tutup-kedua-frame {
+  display: block;
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 30px;
+  height: 30px;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: 1px solid white;
+  border-radius: 50%;
+  font-size: 1.2rem;
+  font-weight: bold;
+  line-height: 1;
+  text-align: center;
+  cursor: pointer;
+  z-index: 1003;
 }
