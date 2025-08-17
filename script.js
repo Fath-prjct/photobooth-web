@@ -52,22 +52,37 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   async function aturKamera() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: "user",
-        },
-        audio: false,
-      });
-      umpanVideo.srcObject = stream;
-      pesanErrorKamera.style.display = "none";
-    } catch (err) {
-      console.error("Gagal mengakses kamera: ", err);
-      pesanErrorKamera.style.display = "block";
-    }
+  try {
+    // Ambil daftar semua kamera/video input
+    const devices = await navigator.mediaDevices.enumerateDevices();
+
+    // Filter kamera belakang (label biasanya mengandung "back" atau "rear")
+    const backCameras = devices.filter(
+      d => d.kind === "videoinput" && /back|rear/i.test(d.label)
+    );
+
+    // Ambil deviceId kamera belakang utama jika ada
+    const selectedCameraId = backCameras.length > 0 ? backCameras[0].deviceId : null;
+
+    // Request akses kamera
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: selectedCameraId
+        ? { deviceId: { exact: selectedCameraId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+        : { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 720 } }, // fallback ke depan
+      audio: false,
+    });
+
+    // Tampilkan stream di video element
+    const video = document.querySelector("video");
+    video.srcObject = stream;
+    await video.play();
+  } catch (err) {
+    console.error("Gagal mengakses kamera:", err);
   }
+}
+
+// Panggil fungsi
+aturKamera();
 
   function aturTataLetak(idTataLetak) {
     idTataLetakSaatIni = idTataLetak;
