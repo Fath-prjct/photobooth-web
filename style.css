@@ -1,7 +1,7 @@
 /* === Variabel Global === */
 :root {
   --warna-primer: #ffffff;
-  --warna-aksen: #f97116;
+  --warna-aksen: #ffffff76;
   --warna-terang: #ffffff;
   --warna-border-kaca: rgba(255, 255, 255, 0.2);
   --font-utama: "Poppins", "Helvetica Neue", sans-serif;
@@ -25,38 +25,35 @@ body {
   font-family: var(--font-utama);
   color: var(--warna-primer);
 
-  /* SILAKAN UBAH ATAU TAMBAHKAN BACKGROUND ANDA DI SINI */
-  background-image: url("assets/gradient.png");
-  background-color: #2c2c2c; /* Warna fallback jika gambar tidak ada */
-  background-size: cover;
-  background-position: center;
+  /* ===== PERUBAHAN DI SINI ===== */
+  /* DITAMBAH: Latar belakang gambar statis */
+  background-image: url("assets/gradient.png"); /* <-- GANTI DENGAN URL GAMBAR ANDA */
+  background-color: #2c2c2c; /* Warna cadangan jika gambar gagal dimuat */
+  background-size: cover; /* Memastikan gambar menutupi seluruh layar */
+  background-position: center; /* Memusatkan gambar */
+  background-repeat: no-repeat; /* Mencegah gambar berulang */
+  background-attachment: fixed; /* Membuat gambar diam saat di-scroll */
+  /* ===== AKHIR PERUBAHAN ===== */
 
-  display: flex;
-  flex-direction: column;
-  align-items: center;
   min-height: 100vh;
-  padding: 1.5rem;
+  padding: 6rem 1.5rem 1.5rem 1.5rem;
   overflow-y: auto;
 }
 
-/* Animasi Gradien Dihapus */
+/* DIHAPUS: Blok animasi gradien tidak diperlukan lagi */
+/* @keyframes animasi-gradien { ... } */
 
-/* === Header Responsif Otomatis === */
+/* === Header Awal (Untuk Desktop) === */
 .header {
-  position: relative;
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
-  max-width: 550px;
-  padding: 1rem 0;
-  margin-bottom: 1.5rem;
+  padding: 1.5rem 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.logo {
-  flex-shrink: 0;
+  z-index: 10;
 }
 
 .logo img {
@@ -68,9 +65,7 @@ body {
   padding: 0;
   margin: 0;
   display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .navigasi a {
@@ -93,6 +88,7 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 0.25rem;
+  margin: 0 auto;
 }
 
 .kedua {
@@ -322,8 +318,8 @@ body {
 
 /* === Tombol Shutter Bulat === */
 #tombol-aksi-utama {
-  width: 70px;
-  height: 70px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   border: none;
   cursor: pointer;
@@ -336,7 +332,7 @@ body {
   font-size: 0;
   padding: 0;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  margin-top: 1rem;
+  margin-top: 0.25rem;
 }
 #tombol-aksi-utama:hover {
   transform: scale(1.05);
@@ -369,7 +365,7 @@ body {
   border: 6px solid white;
   border-radius: var(--radius-border-utama);
   background-color: #333;
-  max-width: 50%;
+  max-width: 35%;
   height: auto;
 }
 .tombol-aksi-kedua {
@@ -466,4 +462,32 @@ body {
   text-align: center;
   cursor: pointer;
   z-index: 1003;
+}
+
+/* === Media Query untuk Layar Kecil === */
+
+@media (min-height: 844px) {
+  .area-konten {
+    padding-top: 2rem;
+  }
+}
+
+@media (min-height: 768px) {
+  .header {
+    padding-bottom: 0.25rem;
+  }
+}
+
+@media (min-height: 667px) {
+  .header {
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .navigasi ul {
+    gap: 2rem;
+  }
+  #tombol-aksi-utama {
+    margin-top: 1rem;
+  }
 }

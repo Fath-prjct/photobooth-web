@@ -19,9 +19,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const tombolTutupkedua = popupkeduaFrame.querySelector(
     ".tombol-tutup-kedua-frame"
   );
-  // Variabel baru untuk label dropdown
-  const labelTataLetak = document.getElementById("label-tata-letak");
-  const labelTimer = document.getElementById("label-timer");
+
+  // DITAMBAH: Mengambil elemen label untuk diperbarui teksnya
+  const labelTataLetak = document.querySelector(
+    'label[for="pilihan-tata-letak"]'
+  );
+  const labelTimer = document.querySelector('label[for="pilihan-timer"]');
 
   // --- Konfigurasi dan State (Status) Aplikasi ---
   const PENGATURAN_LAYOUT = {
@@ -164,7 +167,6 @@ document.addEventListener("DOMContentLoaded", () => {
       `.slot-thumbnail[data-slot='${indexSlot}']`
     );
     slot.innerHTML = `<img src="${dataUrl}" />`;
-    slot.classList.add("terisi");
   }
 
   function pilihSlotUntukUlangi(indexSlot) {
@@ -178,8 +180,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function perbaruiTombolAksi() {
-    const sudahPenuh = daftarFoto.every((foto) => foto !== null);
-    tombolAksiUtama.textContent = sudahPenuh ? "Berikutnya" : "Mulai Foto";
+    // Fungsi ini tidak lagi mengubah teks tombol shutter, tapi bisa digunakan untuk logika lain nanti
   }
 
   async function tampilkankedua() {
@@ -204,10 +205,12 @@ document.addEventListener("DOMContentLoaded", () => {
             })
         )
     );
+
     if (tataLetak.jumlah === 3) {
       kanvasFinal.width = 660;
       kanvasFinal.height = 2370;
     }
+
     const gambarFrame = await new Promise((res) => {
       if (frameTerpilih === "none") return res(null);
       const img = new Image();
@@ -218,8 +221,10 @@ document.addEventListener("DOMContentLoaded", () => {
       };
       img.src = frameTerpilih;
     });
+
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, kanvasFinal.width, kanvasFinal.height);
+
     gambarFoto.forEach((img, index) => {
       if (!img) return;
       let w = 528,
@@ -241,6 +246,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       ctx.drawImage(img, sx, sy, sWidth, sHeight, x, y, w, h);
     });
+
     if (gambarFrame) {
       ctx.drawImage(gambarFrame, 0, 0, kanvasFinal.width, kanvasFinal.height);
     }
@@ -260,7 +266,6 @@ document.addEventListener("DOMContentLoaded", () => {
     halamanPhotobooth.classList.remove("kedua");
     if (pilihanTataLetak.value === "grid4") {
       pilihanTataLetak.value = "strip3";
-      labelTataLetak.textContent = "3 Foto";
     }
     aturTataLetak(pilihanTataLetak.value);
   }
@@ -275,20 +280,23 @@ document.addEventListener("DOMContentLoaded", () => {
   tombolUnduh.addEventListener("click", unduhGambar);
   tombolUlangiSemua.addEventListener("click", kembaliKePhotobooth);
 
+  // DIUBAH: Event listener untuk Pilihan Tata Letak
   pilihanTataLetak.addEventListener("change", (e) => {
-    const teksPilihan = e.target.options[e.target.selectedIndex].text;
+    const opsiTerpilih = e.target.options[e.target.selectedIndex].text;
     if (e.target.value === "grid4") {
       alert("Fitur 4 foto belum tersedia saat ini.");
-      e.target.value = idTataLetakSaatIni;
+      e.target.value = idTataLetakSaatIni; // Kembalikan ke pilihan valid sebelumnya
     } else {
+      // Hanya perbarui label dan layout jika pilihan valid
+      labelTataLetak.textContent = opsiTerpilih;
       aturTataLetak(e.target.value);
-      labelTataLetak.textContent = teksPilihan; // Update label jika pilihan valid
     }
   });
 
+  // DITAMBAH: Event listener baru untuk Pilihan Timer
   pilihanTimer.addEventListener("change", (e) => {
-    const teksPilihan = e.target.options[e.target.selectedIndex].text;
-    labelTimer.textContent = teksPilihan; // Update label setiap kali berubah
+    const opsiTerpilih = e.target.options[e.target.selectedIndex].text;
+    labelTimer.textContent = opsiTerpilih; // Perbarui teks label timer
   });
 
   document.querySelector(".opsi-filter").addEventListener("click", (e) => {
@@ -326,6 +334,5 @@ document.addEventListener("DOMContentLoaded", () => {
   overlayBlur.addEventListener("click", sembunyikankeduaFrame);
   tombolTutupkedua.addEventListener("click", sembunyikankeduaFrame);
 
-  // Jalankan fungsi inisialisasi untuk memulai aplikasi
   inisialisasi();
 });
