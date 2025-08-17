@@ -57,7 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
         video: {
           width: { ideal: 1280 },
           height: { ideal: 720 },
-          facingMode: "user",
+          facingMode: {exact: "environment"},
         },
         audio: false,
       });
