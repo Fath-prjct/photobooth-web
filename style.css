@@ -24,24 +24,16 @@ html {
 body {
   font-family: var(--font-utama);
   color: var(--warna-primer);
-
-  /* ===== PERUBAHAN DI SINI ===== */
-  /* DITAMBAH: Latar belakang gambar statis */
-  background-image: url("assets/gradient.png"); /* <-- GANTI DENGAN URL GAMBAR ANDA */
-  background-color: #2c2c2c; /* Warna cadangan jika gambar gagal dimuat */
-  background-size: cover; /* Memastikan gambar menutupi seluruh layar */
-  background-position: center; /* Memusatkan gambar */
-  background-repeat: no-repeat; /* Mencegah gambar berulang */
-  background-attachment: fixed; /* Membuat gambar diam saat di-scroll */
-  /* ===== AKHIR PERUBAHAN ===== */
-
+  background-image: url("assets/gradient.png");
+  background-color: #2c2c2c;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
   min-height: 100vh;
   padding: 6rem 1.5rem 1.5rem 1.5rem;
   overflow-y: auto;
 }
-
-/* DIHAPUS: Blok animasi gradien tidak diperlukan lagi */
-/* @keyframes animasi-gradien { ... } */
 
 /* === Header Awal (Untuk Desktop) === */
 .header {
@@ -195,6 +187,88 @@ body {
   transition: filter 0.3s ease;
 }
 
+/* === Tombol Pilihan Kamera Kustom (BARU) === */
+#wadah-tombol-pilihan-kamera {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  height: 36px;
+  z-index: 5;
+  display: none; /* Disembunyikan oleh default, JS akan menampilkan */
+}
+
+#tombol-pilih-kamera {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+
+  /* Style Glassmorphism */
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+
+  /* Ikon Kamera (SVG) */
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>');
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 18px;
+}
+
+#tombol-pilih-kamera:hover {
+  background-color: rgba(0, 0, 0, 0.6);
+}
+
+#tombol-pilih-kamera:active {
+  transform: scale(0.9);
+}
+
+#daftar-pilihan-kamera {
+  position: absolute;
+  bottom: 48px; /* Posisi di atas tombol */
+  left: 0;
+  display: none; /* Disembunyikan */
+  flex-direction: column;
+  gap: 5px;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  padding: 8px;
+  width: max-content; /* Lebar menyesuaikan konten */
+  max-width: 200px;
+}
+
+/* Kelas 'tampil' untuk memunculkan daftar */
+#daftar-pilihan-kamera.tampil {
+  display: flex;
+}
+
+.tombol-opsi-kamera {
+  background: none;
+  border: none;
+  color: white;
+  padding: 8px 12px;
+  text-align: left;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: var(--font-utama);
+  font-size: 0.8rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background-color 0.2s ease;
+}
+
+.tombol-opsi-kamera:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
 /* === Overlay & Pesan Error === */
 #overlay-timer {
   position: absolute;
@@ -236,6 +310,16 @@ body {
 }
 .filter-sepia {
   filter: sepia(100%);
+}
+.filter-blur {
+  filter: blur(3px); /* Angka 3px bisa diubah sesuai selera */
+}
+.filter-portra {
+  filter: sepia(20%) contrast(1.05) brightness(1.1) hue-rotate(-5deg);
+}
+/* Tambahkan filter High Saturation */
+.filter-high-saturation {
+  filter: saturate(180%);
 }
 
 /* === Thumbnail Glassmorphism === */
@@ -281,7 +365,7 @@ body {
 }
 .wadah-opsi {
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 0.5rem;
   width: 100%;
   overflow-x: auto;
@@ -293,6 +377,10 @@ body {
 .wadah-opsi::-webkit-scrollbar-thumb {
   background: var(--warna-border-kaca);
   border-radius: 4px;
+}
+
+#halaman-kedua .wadah-opsi {
+  margin: 1rem 0;
 }
 
 .tombol-opsi {
@@ -392,7 +480,7 @@ body {
   transform: scale(0.98);
 }
 
-.overlay-blur {
+.overlay-popup {
   position: fixed;
   top: 0;
   left: 0;
@@ -406,62 +494,82 @@ body {
   transition: opacity 0.3s ease;
   pointer-events: none;
 }
-.overlay-blur.visible {
+
+.overlay-popup.tampil {
   opacity: 1;
   pointer-events: auto;
 }
 
-#popup-kedua-frame {
+.popup {
   position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%) scale(0.9);
-  border: 4px solid white;
-  border-radius: 8px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
-  background-color: #333;
-  z-index: 1002;
+  width: 90%;
+  max-width: 420px;
+  background: rgba(40, 40, 40, 0.7);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid var(--warna-border-kaca);
+  border-radius: var(--radius-border-utama);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  z-index: 1001;
+  padding: 1.5rem 2rem;
+  color: var(--warna-primer);
   opacity: 0;
-  visibility: hidden;
+  transition: opacity 0.3s ease, transform 0.3s ease;
   pointer-events: none;
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: auto;
-  height: auto;
+  visibility: hidden;
 }
-#popup-kedua-frame.visible {
-  transform: translate(-50%, -50%) scale(1);
+
+.popup.tampil {
   opacity: 1;
-  visibility: visible;
+  transform: translate(-50%, -50%) scale(1);
   pointer-events: auto;
+  visibility: visible;
 }
-#popup-kedua-frame img {
-  display: block;
-  height: 250px;
-  width: auto;
-  max-width: 80vw;
-  border-radius: 4px;
-  object-fit: contain;
+
+.popup h2 {
+  text-align: center;
+  margin-bottom: 1.5rem;
+  font-weight: 700;
 }
-.tombol-tutup-kedua-frame {
-  display: block;
+
+.tombol-tutup-popup {
   position: absolute;
-  top: 5px;
-  right: 5px;
+  top: 10px;
+  right: 10px;
   width: 30px;
   height: 30px;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.3);
   color: white;
-  border: 1px solid white;
+  border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 50%;
   font-size: 1.2rem;
   font-weight: bold;
   line-height: 1;
-  text-align: center;
   cursor: pointer;
-  z-index: 1003;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.tombol-tutup-popup:hover {
+  background-color: rgba(0, 0, 0, 0.5);
+  transform: scale(1.1);
+}
+
+.daftar-changelog {
+  list-style: none;
+  padding-left: 0;
+}
+
+.daftar-changelog li {
+  margin-bottom: 1rem;
+  line-height: 1.5;
+  font-size: 0.9rem;
+}
+
+.daftar-changelog li strong {
+  color: #a7d7ff; /* Warna aksen untuk judul fitur */
 }
 
 /* === Media Query untuk Layar Kecil === */

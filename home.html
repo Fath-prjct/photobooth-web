@@ -63,6 +63,10 @@
                 Kamera tidak dapat diakses.<br />Mohon berikan izin dan segarkan
                 halaman.
               </div>
+              <div id="wadah-tombol-pilihan-kamera">
+                <button id="tombol-pilih-kamera" title="Pilih Kamera"></button>
+                <div id="daftar-pilihan-kamera"></div>
+              </div>
             </div>
           </div>
           <div class="kolom-kanan">
@@ -75,19 +79,10 @@
             <button class="tombol-opsi" data-filter="bw">B&W</button>
             <button class="tombol-opsi" data-filter="vignette">Vignette</button>
             <button class="tombol-opsi" data-filter="sepia">Sepia</button>
-          </div>
-          <div class="opsi-frame wadah-opsi">
-            <button class="tombol-opsi aktif" data-theme="none">
-              Tanpa Frame
-            </button>
-            <button class="tombol-opsi" data-frame="frames/Frame1.png">
-              Cookies
-            </button>
-            <button class="tombol-opsi" data-frame="frames/frame-film.png">
-              Film
-            </button>
-            <button class="tombol-opsi" data-frame="frames/frame-cookies.png">
-              Pasta
+            <button class="tombol-opsi" data-filter="blur">Blur</button>
+            <button class="tombol-opsi" data-filter="portra">Portra</button>
+            <button class="tombol-opsi" data-filter="high-saturation">
+              High Saturation
             </button>
           </div>
         </div>
@@ -98,16 +93,60 @@
     <div id="halaman-kedua" class="halaman kedua">
       <h1 class="judul">Hasil Foto Anda</h1>
       <canvas id="kanvas-photostrip-final"></canvas>
+
+      <div class="opsi-frame wadah-opsi">
+        <button class="tombol-opsi aktif" data-theme="none">Tanpa Frame</button>
+        <button class="tombol-opsi" data-frame="frames/Frame1.png">
+          Cookies
+        </button>
+        <button class="tombol-opsi" data-frame="frames/frame-film.png">
+          Film
+        </button>
+        <button class="tombol-opsi" data-frame="frames/frame-cookies.png">
+          Pasta
+        </button>
+        <button class="tombol-opsi" data-frame="frames/frame-cookies.png">
+          Merdeka
+        </button>
+        <button class="tombol-opsi" data-frame="frames/frame-cookies.png">
+          Imlek
+        </button>
+        <button class="tombol-opsi" data-frame="frames/frame-cookies.png">
+          Ramadhan
+        </button>
+      </div>
+
       <div class="tombol-aksi-kedua">
         <button class="tombol-primer" id="tombol-unduh">Unduh</button>
         <button class="tombol-primer" id="tombol-ulangi-semua">Ulangi</button>
       </div>
     </div>
-
-    <div id="overlay-blur" class="overlay-blur"></div>
-    <div id="popup-kedua-frame">
-      <img src="" alt="Pratinjau Frame" />
-      <button class="tombol-tutup-kedua-frame">&times;</button>
+    <div id="overlay-changelog" class="overlay-popup"></div>
+    <div id="popup-changelog" class="popup">
+      <button id="tombol-tutup-changelog" class="tombol-tutup-popup">
+        &times;
+      </button>
+      <h2>Pembaruan Terbaru! ✨</h2>
+      <ul class="daftar-changelog">
+        <li>
+          <strong>Pilihan Kamera:</strong> Sekarang Anda bisa memilih input
+          kamera (depan, belakang, eksternal) melalui tombol di pojok kiri bawah
+          video.
+        </li>
+        <li>
+          <strong>Live Preview Frame:</strong> Fitur pilih frame dipindahkan ke
+          halaman hasil, sehingga Anda bisa melihat preview langsung pada foto
+          Anda.
+        </li>
+        <li>
+          <strong>Perbaikan Bug:</strong> Masalah pada fitur 'retake' setelah
+          mengubah urutan foto kini telah diperbaiki.
+        </li>
+        <li>
+          <strong>Filter Baru:</strong> Menambahkan filter Blur, Portra, dan
+          High Saturation untuk mempercantik foto Anda.
+        </li>
+      </ul>
     </div>
 
     <script src="script.js"></script>

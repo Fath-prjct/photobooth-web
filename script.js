@@ -13,14 +13,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const overlayTimer = document.getElementById("overlay-timer");
   const kanvasFinal = document.getElementById("kanvas-photostrip-final");
   const pesanErrorKamera = document.getElementById("pesan-error-kamera");
-  const overlayBlur = document.getElementById("overlay-blur");
-  const popupkeduaFrame = document.getElementById("popup-kedua-frame");
-  const gambarkeduaFrame = popupkeduaFrame.querySelector("img");
-  const tombolTutupkedua = popupkeduaFrame.querySelector(
-    ".tombol-tutup-kedua-frame"
+  const wadahTombolPilihanKamera = document.getElementById(
+    "wadah-tombol-pilihan-kamera"
   );
+  const tombolPilihKamera = document.getElementById("tombol-pilih-kamera");
+  const daftarPilihanKamera = document.getElementById("daftar-pilihan-kamera");
+  const overlayChangelog = document.getElementById("overlay-changelog");
+  const popupChangelog = document.getElementById("popup-changelog");
+  const tombolTutupChangelog = document.getElementById(
+    "tombol-tutup-changelog"
+  );
+  // Variabel popup sudah dihapus
 
-  // DITAMBAH: Mengambil elemen label untuk diperbarui teksnya
   const labelTataLetak = document.querySelector(
     'label[for="pilihan-tata-letak"]'
   );
@@ -38,35 +42,72 @@ document.addEventListener("DOMContentLoaded", () => {
   let frameTerpilih = "none";
   let temaTerpilih = "none";
   let instanceSortable = null;
+  let daftarKamera = [];
 
   // --- Fungsi-Fungsi Aplikasi ---
 
-  async function inisialisasi() {
-    await aturKamera();
-    aturTataLetak(pilihanTataLetak.value);
-    const frameAktif = document.querySelector(".opsi-frame .tombol-opsi.aktif");
-    if (frameAktif) {
-      frameTerpilih = frameAktif.dataset.frame || "none";
-      temaTerpilih = frameAktif.dataset.theme || "none";
+  async function inisialisasiKamera(deviceId = null) {
+    if (umpanVideo.srcObject) {
+      umpanVideo.srcObject.getTracks().forEach((track) => track.stop());
     }
-  }
-
-  async function aturKamera() {
+    const constraints = {
+      video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false,
+    };
+    if (deviceId) {
+      constraints.video.deviceId = { exact: deviceId };
+    } else {
+      constraints.video.facingMode = "user";
+    }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          facingMode: "user",
-        },
-        audio: false,
-      });
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       umpanVideo.srcObject = stream;
       pesanErrorKamera.style.display = "none";
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      daftarKamera = devices.filter((device) => device.kind === "videoinput");
+      if (daftarKamera.length > 1) {
+        daftarPilihanKamera.innerHTML = "";
+        daftarKamera.forEach((camera) => {
+          const tombolOpsi = document.createElement("button");
+          tombolOpsi.className = "tombol-opsi-kamera";
+          tombolOpsi.textContent =
+            camera.label || `Kamera ${daftarPilihanKamera.children.length + 1}`;
+          tombolOpsi.dataset.deviceId = camera.deviceId;
+          tombolOpsi.onclick = () => {
+            if (
+              umpanVideo.srcObject.getVideoTracks()[0].getSettings()
+                .deviceId !== camera.deviceId
+            ) {
+              inisialisasiKamera(camera.deviceId);
+            }
+            daftarPilihanKamera.classList.remove("tampil");
+          };
+          daftarPilihanKamera.appendChild(tombolOpsi);
+        });
+        wadahTombolPilihanKamera.style.display = "block";
+      } else {
+        wadahTombolPilihanKamera.style.display = "none";
+      }
     } catch (err) {
       console.error("Gagal mengakses kamera: ", err);
       pesanErrorKamera.style.display = "block";
     }
+  }
+
+  function tampilkanChangelog() {
+    overlayChangelog.classList.add("tampil");
+    popupChangelog.classList.add("tampil");
+  }
+
+  function sembunyikanChangelog() {
+    overlayChangelog.classList.remove("tampil");
+    popupChangelog.classList.remove("tampil");
+  }
+
+  async function inisialisasi() {
+    await inisialisasiKamera();
+    aturTataLetak(pilihanTataLetak.value);
+    // Inisialisasi frameTerpilih dihapus dari sini karena sudah tidak relevan di halaman awal
   }
 
   function aturTataLetak(idTataLetak) {
@@ -78,7 +119,10 @@ document.addEventListener("DOMContentLoaded", () => {
       const slot = document.createElement("div");
       slot.className = "slot-thumbnail";
       slot.dataset.slot = i;
-      slot.addEventListener("click", () => pilihSlotUntukUlangi(i));
+      slot.addEventListener("click", (event) => {
+        const indexSlotSaatIni = parseInt(event.currentTarget.dataset.slot);
+        pilihSlotUntukUlangi(indexSlotSaatIni);
+      });
       wadahThumbnail.appendChild(slot);
     }
     perbaruiTombolAksi();
@@ -179,11 +223,18 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function perbaruiTombolAksi() {
-    // Fungsi ini tidak lagi mengubah teks tombol shutter, tapi bisa digunakan untuk logika lain nanti
-  }
+  function perbaruiTombolAksi() {}
 
   async function tampilkankedua() {
+    // Reset pilihan frame ke default saat masuk halaman kedua
+    frameTerpilih = "none";
+    document
+      .querySelectorAll("#halaman-kedua .tombol-opsi")
+      .forEach((btn) => btn.classList.remove("aktif"));
+    document
+      .querySelector("#halaman-kedua .tombol-opsi[data-theme='none']")
+      .classList.add("aktif");
+
     halamanPhotobooth.classList.add("kedua");
     halamankedua.classList.remove("kedua");
     await buatGambarAkhir();
@@ -205,14 +256,12 @@ document.addEventListener("DOMContentLoaded", () => {
             })
         )
     );
-
     if (tataLetak.jumlah === 3) {
       kanvasFinal.width = 660;
       kanvasFinal.height = 2370;
     }
-
     const gambarFrame = await new Promise((res) => {
-      if (frameTerpilih === "none") return res(null);
+      if (!frameTerpilih || frameTerpilih === "none") return res(null);
       const img = new Image();
       img.onload = () => res(img);
       img.onerror = () => {
@@ -221,10 +270,8 @@ document.addEventListener("DOMContentLoaded", () => {
       };
       img.src = frameTerpilih;
     });
-
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, kanvasFinal.width, kanvasFinal.height);
-
     gambarFoto.forEach((img, index) => {
       if (!img) return;
       let w = 528,
@@ -246,7 +293,6 @@ document.addEventListener("DOMContentLoaded", () => {
       }
       ctx.drawImage(img, sx, sy, sWidth, sHeight, x, y, w, h);
     });
-
     if (gambarFrame) {
       ctx.drawImage(gambarFrame, 0, 0, kanvasFinal.width, kanvasFinal.height);
     }
@@ -270,33 +316,29 @@ document.addEventListener("DOMContentLoaded", () => {
     aturTataLetak(pilihanTataLetak.value);
   }
 
-  function sembunyikankeduaFrame() {
-    overlayBlur.classList.remove("visible");
-    popupkeduaFrame.classList.remove("visible");
-  }
+  // Fungsi popup sembunyikankeduaFrame() sudah dihapus
 
   // --- Pemasangan Event Listener (Pendengar Aksi Pengguna) ---
   tombolAksiUtama.addEventListener("click", tanganiKlikAksiUtama);
   tombolUnduh.addEventListener("click", unduhGambar);
   tombolUlangiSemua.addEventListener("click", kembaliKePhotobooth);
+  tombolTutupChangelog.addEventListener("click", sembunyikanChangelog);
+  overlayChangelog.addEventListener("click", sembunyikanChangelog);
 
-  // DIUBAH: Event listener untuk Pilihan Tata Letak
   pilihanTataLetak.addEventListener("change", (e) => {
     const opsiTerpilih = e.target.options[e.target.selectedIndex].text;
     if (e.target.value === "grid4") {
       alert("Fitur 4 foto belum tersedia saat ini.");
-      e.target.value = idTataLetakSaatIni; // Kembalikan ke pilihan valid sebelumnya
+      e.target.value = idTataLetakSaatIni;
     } else {
-      // Hanya perbarui label dan layout jika pilihan valid
       labelTataLetak.textContent = opsiTerpilih;
       aturTataLetak(e.target.value);
     }
   });
 
-  // DITAMBAH: Event listener baru untuk Pilihan Timer
   pilihanTimer.addEventListener("change", (e) => {
     const opsiTerpilih = e.target.options[e.target.selectedIndex].text;
-    labelTimer.textContent = opsiTerpilih; // Perbarui teks label timer
+    labelTimer.textContent = opsiTerpilih;
   });
 
   document.querySelector(".opsi-filter").addEventListener("click", (e) => {
@@ -313,26 +355,39 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  document.querySelector(".opsi-frame").addEventListener("click", (e) => {
-    const tombol = e.target.closest(".tombol-opsi");
-    if (tombol) {
-      document
-        .querySelectorAll(".opsi-frame .tombol-opsi")
-        .forEach((btn) => btn.classList.remove("aktif"));
-      tombol.classList.add("aktif");
-      frameTerpilih = tombol.dataset.frame || "none";
-      temaTerpilih = tombol.dataset.theme || "none";
-      const sumberGambarFrame = tombol.dataset.frame;
-      if (sumberGambarFrame && sumberGambarFrame !== "none") {
-        gambarkeduaFrame.src = sumberGambarFrame;
-        overlayBlur.classList.add("visible");
-        popupkeduaFrame.classList.add("visible");
-      }
+  // Event listener untuk .opsi-frame yang lama dihapus dari sini
+
+  // Event listener untuk popup dihapus dari sini
+
+  tombolPilihKamera.addEventListener("click", (event) => {
+    event.stopPropagation();
+    daftarPilihanKamera.classList.toggle("tampil");
+  });
+
+  document.addEventListener("click", () => {
+    if (daftarPilihanKamera.classList.contains("tampil")) {
+      daftarPilihanKamera.classList.remove("tampil");
     }
   });
 
-  overlayBlur.addEventListener("click", sembunyikankeduaFrame);
-  tombolTutupkedua.addEventListener("click", sembunyikankeduaFrame);
+  // EVENT LISTENER BARU untuk pilihan frame di halaman kedua
+  halamankedua.addEventListener("click", (e) => {
+    const tombol = e.target.closest(".opsi-frame .tombol-opsi");
+    if (tombol) {
+      document
+        .querySelectorAll("#halaman-kedua .tombol-opsi")
+        .forEach((btn) => btn.classList.remove("aktif"));
+      tombol.classList.add("aktif");
+      frameTerpilih = tombol.dataset.frame || "none";
+      // Gambar ulang kanvas dengan frame yang baru dipilih
+      buatGambarAkhir();
+    }
+  });
+
+  if (!sessionStorage.getItem("changelogDitampilkan")) {
+    tampilkanChangelog();
+    sessionStorage.setItem("changelogDitampilkan", "true");
+  }
 
   inisialisasi();
 });
