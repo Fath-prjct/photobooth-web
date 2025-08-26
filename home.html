@@ -12,6 +12,7 @@
     />
     <link rel="stylesheet" href="style.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="https://unpkg.com/realm-web/dist/bundle.iife.js"></script>
   </head>
   <body>
     <header class="header">
@@ -57,6 +58,7 @@
           <div class="kolom-kiri">
             <div class="area-kamera">
               <video id="umpan-video" autoplay playsinline></video>
+              <canvas id="kanvas-filter"></canvas>
               <div id="overlay-timer"></div>
               <canvas id="kanvas-foto"></canvas>
               <div id="pesan-error-kamera">
@@ -84,6 +86,7 @@
             <button class="tombol-opsi" data-filter="high-saturation">
               High Saturation
             </button>
+            <button class="tombol-opsi" data-filter="pixel">Pixel</button>
           </div>
         </div>
       </div>
@@ -126,7 +129,7 @@
       <button id="tombol-tutup-changelog" class="tombol-tutup-popup">
         &times;
       </button>
-      <h2>Pembaruan Terbaru! ✨</h2>
+      <h2>Pembaruan Terbaru!</h2>
       <ul class="daftar-changelog">
         <li>
           <strong>Pilihan Kamera:</strong> Sekarang Anda bisa memilih input
@@ -146,6 +149,7 @@
           <strong>Filter Baru:</strong> Menambahkan filter Blur, Portra, dan
           High Saturation untuk mempercantik foto Anda.
         </li>
+        <li><strong>Tombol Shutter:</strong> Volume Down = Tombol Shutter</li>
       </ul>
     </div>
 

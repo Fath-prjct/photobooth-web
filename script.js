@@ -1,5 +1,10 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // --- Deklarasi Variabel Elemen DOM (Halaman Web) ---
+  // --- BAGIAN PENGATURAN PENTING (HARAP ISI BAGIAN INI) ---
+  const MONGO_APP_ID = "photobooth-app-yqcwhxl";
+  const CLOUDINARY_CLOUD_NAME = "dpjdj5p5v"; // Contoh: "dpjdj5p5v"
+  const CLOUDINARY_UPLOAD_PRESET = "ml_default"; // Contoh: "ml_default"
+
+  // --- Deklarasi Variabel Elemen DOM ---
   const halamanPhotobooth = document.getElementById("halaman-utama");
   const halamankedua = document.getElementById("halaman-kedua");
   const umpanVideo = document.getElementById("umpan-video");
@@ -18,33 +23,83 @@ document.addEventListener("DOMContentLoaded", () => {
   );
   const tombolPilihKamera = document.getElementById("tombol-pilih-kamera");
   const daftarPilihanKamera = document.getElementById("daftar-pilihan-kamera");
+  const kanvasFilter = document.getElementById("kanvas-filter");
+  const ctxFilter = kanvasFilter.getContext("2d");
   const overlayChangelog = document.getElementById("overlay-changelog");
   const popupChangelog = document.getElementById("popup-changelog");
   const tombolTutupChangelog = document.getElementById(
     "tombol-tutup-changelog"
   );
-  // Variabel popup sudah dihapus
 
   const labelTataLetak = document.querySelector(
     'label[for="pilihan-tata-letak"]'
   );
   const labelTimer = document.querySelector('label[for="pilihan-timer"]');
 
-  // --- Konfigurasi dan State (Status) Aplikasi ---
-  const PENGATURAN_LAYOUT = {
-    strip3: { jumlah: 3 },
-    grid4: { jumlah: 4 },
-  };
+  // --- Konfigurasi dan State Aplikasi ---
+  const PENGATURAN_LAYOUT = { strip3: { jumlah: 3 }, grid4: { jumlah: 4 } };
   let idTataLetakSaatIni = "strip3";
   let slotTerpilih = 0;
   let daftarFoto = [];
   let sedangHitungMundur = false;
   let frameTerpilih = "none";
-  let temaTerpilih = "none";
   let instanceSortable = null;
   let daftarKamera = [];
+  let idAnimasiFilter = null;
+  let userMongoDB = null;
+  const appMongoDB = new Realm.App({ id: MONGO_APP_ID });
 
   // --- Fungsi-Fungsi Aplikasi ---
+
+  async function loginMongoDB() {
+    try {
+      if (!userMongoDB) {
+        const credentials = Realm.Credentials.anonymous();
+        userMongoDB = await appMongoDB.logIn(credentials);
+        console.log("user:", userMongoDB.id);
+      }
+      return userMongoDB;
+    } catch (err) {
+      console.error("error 102005", err);
+      return null;
+    }
+  }
+
+  async function uploadKeCloudinary(dataUrl) {
+    const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
+    const formData = new FormData();
+    formData.append("file", dataUrl);
+    formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+    try {
+      const response = await fetch(url, { method: "POST", body: formData });
+      const data = await response.json();
+      if (data.secure_url) {
+        console.log("src", data.secure_url);
+        return data.secure_url;
+      } else {
+        throw new Error(
+          "Succesfully failed: " +
+            (data.error ? data.error.message : "tidak valid")
+        );
+      }
+    } catch (err) {
+      console.error("--- error 102005 ---", err);
+      return null;
+    }
+  }
+
+  async function simpanKeMongoDB(imageUrl) {
+    if (!userMongoDB) {
+      await loginMongoDB();
+      if (!userMongoDB) return;
+    }
+    try {
+      await userMongoDB.functions.savePhotostrip(imageUrl);
+      console.log("Succesfully failed: ");
+    } catch (err) {
+      console.error("--- error 102005 ---", err);
+    }
+  }
 
   async function inisialisasiKamera(deviceId = null) {
     if (umpanVideo.srcObject) {
@@ -94,20 +149,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  function tampilkanChangelog() {
-    overlayChangelog.classList.add("tampil");
-    popupChangelog.classList.add("tampil");
-  }
-
-  function sembunyikanChangelog() {
-    overlayChangelog.classList.remove("tampil");
-    popupChangelog.classList.remove("tampil");
-  }
-
   async function inisialisasi() {
     await inisialisasiKamera();
     aturTataLetak(pilihanTataLetak.value);
-    // Inisialisasi frameTerpilih dihapus dari sini karena sudah tidak relevan di halaman awal
+    loginMongoDB();
   }
 
   function aturTataLetak(idTataLetak) {
@@ -125,7 +170,6 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       wadahThumbnail.appendChild(slot);
     }
-    perbaruiTombolAksi();
     pilihSlotUntukUlangi(0);
     inisialisasiSortable();
   }
@@ -188,19 +232,35 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function ambilFoto() {
     if (!umpanVideo.srcObject) return;
+
+    // Cek filter aktif saat ini
+    const filterAktif = document.querySelector(
+      ".opsi-filter .tombol-opsi.aktif"
+    ).dataset.filter;
+
     const context = kanvasFoto.getContext("2d");
+    const sumberGambar = filterAktif === "pixel" ? kanvasFilter : umpanVideo;
+
     kanvasFoto.width = umpanVideo.videoWidth;
     kanvasFoto.height = umpanVideo.videoHeight;
-    context.filter = getComputedStyle(umpanVideo).filter;
+
+    // Terapkan filter CSS hanya jika bukan mode pixel
+    if (filterAktif !== "pixel") {
+      context.filter = getComputedStyle(umpanVideo).filter;
+    } else {
+      context.filter = "none"; // Pastikan tidak ada filter ganda
+    }
+
     context.translate(kanvasFoto.width, 0);
     context.scale(-1, 1);
-    context.drawImage(umpanVideo, 0, 0, kanvasFoto.width, kanvasFoto.height);
+
+    // Gunakan sumberGambar yang sudah ditentukan
+    context.drawImage(sumberGambar, 0, 0, kanvasFoto.width, kanvasFoto.height);
+
     daftarFoto[slotTerpilih] = kanvasFoto.toDataURL("image/jpeg", 0.9);
     tampilkanFotoDiSlot(slotTerpilih, daftarFoto[slotTerpilih]);
-    perbaruiTombolAksi();
     pilihSlotUntukUlangi(cariSlotKosongBerikutnya());
   }
-
   function cariSlotKosongBerikutnya() {
     const slotBerikutnya = daftarFoto.indexOf(null);
     return slotBerikutnya === -1 ? slotTerpilih : slotBerikutnya;
@@ -223,10 +283,7 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function perbaruiTombolAksi() {}
-
   async function tampilkankedua() {
-    // Reset pilihan frame ke default saat masuk halaman kedua
     frameTerpilih = "none";
     document
       .querySelectorAll("#halaman-kedua .tombol-opsi")
@@ -234,10 +291,14 @@ document.addEventListener("DOMContentLoaded", () => {
     document
       .querySelector("#halaman-kedua .tombol-opsi[data-theme='none']")
       .classList.add("aktif");
-
     halamanPhotobooth.classList.add("kedua");
     halamankedua.classList.remove("kedua");
     await buatGambarAkhir();
+    const dataUrlFinal = kanvasFinal.toDataURL("image/png");
+    const imageUrl = await uploadKeCloudinary(dataUrlFinal);
+    if (imageUrl) {
+      await simpanKeMongoDB(imageUrl);
+    }
   }
 
   async function buatGambarAkhir() {
@@ -310,67 +371,148 @@ document.addEventListener("DOMContentLoaded", () => {
   function kembaliKePhotobooth() {
     halamankedua.classList.add("kedua");
     halamanPhotobooth.classList.remove("kedua");
-    if (pilihanTataLetak.value === "grid4") {
-      pilihanTataLetak.value = "strip3";
-    }
     aturTataLetak(pilihanTataLetak.value);
   }
 
-  // Fungsi popup sembunyikankeduaFrame() sudah dihapus
+  // --- Fungsi Baru: Menangani Tombol Fisik ---
+  function tanganiTombolVolume(event) {
+    // Cek apakah tombol yang ditekan adalah Volume Down
+    // dan pastikan kita berada di halaman utama (bukan halaman hasil)
+    if (
+      event.key === "AudioVolumeDown" &&
+      !halamanPhotobooth.classList.contains("kedua")
+    ) {
+      // Mencegah browser menurunkan volume audio (aksi default)
+      event.preventDefault();
 
-  // --- Pemasangan Event Listener (Pendengar Aksi Pengguna) ---
+      // Memanggil fungsi shutter yang sudah ada, seolah-olah tombol di layar ditekan
+      tanganiKlikAksiUtama();
+    }
+  }
+
+  // GANTI DENGAN FUNGSI BARU INI
+  function jalankanFilterPixelArt() {
+    if (idAnimasiFilter) cancelAnimationFrame(idAnimasiFilter);
+
+    kanvasFilter.style.display = "block";
+    umpanVideo.style.display = "none";
+
+    kanvasFilter.width = umpanVideo.videoWidth;
+    kanvasFilter.height = umpanVideo.videoHeight;
+
+    // --- PENGATURAN FILTER POSTERIZE ---
+    const PIXEL_SIZE = 9; // Ukuran block pixel. Semakin besar angka, semakin kotak-kotak.
+    const COLOR_LEVELS = 10; // KUNCI UTAMA: Jumlah tingkatan warna per channel (Merah/Hijau/Biru).
+    // Coba ganti ke 2, 3, 5, atau 8 untuk efek berbeda.
+
+    // Fungsi untuk mengurangi tingkatan warna (posterize) pada satu channel (R, G, atau B)
+    function posterizeChannel(value) {
+      const step = 255 / (COLOR_LEVELS - 1);
+      return Math.round(value / step) * step;
+    }
+
+    // Fungsi utama untuk menggambar frame filter
+    function gambarFrame() {
+      if (!umpanVideo.srcObject || umpanVideo.paused || umpanVideo.ended) {
+        idAnimasiFilter = requestAnimationFrame(gambarFrame);
+        return;
+      }
+
+      // 1. Gambar video ke canvas dalam ukuran kecil untuk pixelasi
+      const tempCanvas = document.createElement("canvas");
+      const tempCtx = tempCanvas.getContext("2d");
+      const smallWidth = Math.floor(kanvasFilter.width / PIXEL_SIZE);
+      const smallHeight = Math.floor(kanvasFilter.height / PIXEL_SIZE);
+
+      tempCanvas.width = smallWidth;
+      tempCanvas.height = smallHeight;
+
+      tempCtx.drawImage(umpanVideo, 0, 0, smallWidth, smallHeight);
+
+      const imageData = tempCtx.getImageData(0, 0, smallWidth, smallHeight);
+      const data = imageData.data;
+
+      // 2. Proses setiap pixel kecil: terapkan efek posterize
+      for (let i = 0; i < data.length; i += 4) {
+        // Ambil warna asli
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+
+        // Terapkan posterization pada setiap channel warna
+        data[i] = posterizeChannel(r); // Proses channel Merah
+        data[i + 1] = posterizeChannel(g); // Proses channel Hijau
+        data[i + 2] = posterizeChannel(b); // Proses channel Biru
+      }
+
+      tempCtx.putImageData(imageData, 0, 0);
+
+      // 3. Gambar kembali ke kanvas utama dengan ukuran besar
+      ctxFilter.imageSmoothingEnabled = false;
+      ctxFilter.clearRect(0, 0, kanvasFilter.width, kanvasFilter.height);
+      ctxFilter.drawImage(
+        tempCanvas,
+        0,
+        0,
+        kanvasFilter.width,
+        kanvasFilter.height
+      );
+
+      idAnimasiFilter = requestAnimationFrame(gambarFrame);
+    }
+
+    gambarFrame();
+  }
+
+  function hentikanFilterPixelArt() {
+    if (idAnimasiFilter) {
+      cancelAnimationFrame(idAnimasiFilter);
+      idAnimasiFilter = null;
+    }
+    kanvasFilter.style.display = "none";
+    umpanVideo.style.display = "block";
+  }
+
+  function tampilkanChangelog() {
+    overlayChangelog.classList.add("tampil");
+    popupChangelog.classList.add("tampil");
+  }
+
+  function sembunyikanChangelog() {
+    overlayChangelog.classList.remove("tampil");
+    popupChangelog.classList.remove("tampil");
+  }
+
+  // --- Pemasangan Event Listener ---
   tombolAksiUtama.addEventListener("click", tanganiKlikAksiUtama);
   tombolUnduh.addEventListener("click", unduhGambar);
+  document.addEventListener("keydown", tanganiTombolVolume);
   tombolUlangiSemua.addEventListener("click", kembaliKePhotobooth);
-  tombolTutupChangelog.addEventListener("click", sembunyikanChangelog);
-  overlayChangelog.addEventListener("click", sembunyikanChangelog);
-
   pilihanTataLetak.addEventListener("change", (e) => {
     const opsiTerpilih = e.target.options[e.target.selectedIndex].text;
-    if (e.target.value === "grid4") {
-      alert("Fitur 4 foto belum tersedia saat ini.");
-      e.target.value = idTataLetakSaatIni;
-    } else {
-      labelTataLetak.textContent = opsiTerpilih;
-      aturTataLetak(e.target.value);
-    }
+    labelTataLetak.textContent = opsiTerpilih;
+    aturTataLetak(e.target.value);
   });
-
   pilihanTimer.addEventListener("change", (e) => {
     const opsiTerpilih = e.target.options[e.target.selectedIndex].text;
     labelTimer.textContent = opsiTerpilih;
   });
-
   document.querySelector(".opsi-filter").addEventListener("click", (e) => {
     if (e.target.matches(".tombol-opsi")) {
+      hentikanFilterPixelArt();
       document
         .querySelectorAll(".opsi-filter .tombol-opsi")
         .forEach((btn) => btn.classList.remove("aktif"));
       e.target.classList.add("aktif");
       const filter = e.target.dataset.filter;
       umpanVideo.className = "";
-      if (filter !== "none") {
+      if (filter === "pixel") {
+        jalankanFilterPixelArt();
+      } else if (filter !== "none") {
         umpanVideo.classList.add(`filter-${filter}`);
       }
     }
   });
-
-  // Event listener untuk .opsi-frame yang lama dihapus dari sini
-
-  // Event listener untuk popup dihapus dari sini
-
-  tombolPilihKamera.addEventListener("click", (event) => {
-    event.stopPropagation();
-    daftarPilihanKamera.classList.toggle("tampil");
-  });
-
-  document.addEventListener("click", () => {
-    if (daftarPilihanKamera.classList.contains("tampil")) {
-      daftarPilihanKamera.classList.remove("tampil");
-    }
-  });
-
-  // EVENT LISTENER BARU untuk pilihan frame di halaman kedua
   halamankedua.addEventListener("click", (e) => {
     const tombol = e.target.closest(".opsi-frame .tombol-opsi");
     if (tombol) {
@@ -379,11 +521,20 @@ document.addEventListener("DOMContentLoaded", () => {
         .forEach((btn) => btn.classList.remove("aktif"));
       tombol.classList.add("aktif");
       frameTerpilih = tombol.dataset.frame || "none";
-      // Gambar ulang kanvas dengan frame yang baru dipilih
       buatGambarAkhir();
     }
   });
-
+  tombolPilihKamera.addEventListener("click", (event) => {
+    event.stopPropagation();
+    daftarPilihanKamera.classList.toggle("tampil");
+  });
+  document.addEventListener("click", () => {
+    if (daftarPilihanKamera.classList.contains("tampil")) {
+      daftarPilihanKamera.classList.remove("tampil");
+    }
+  });
+  tombolTutupChangelog.addEventListener("click", sembunyikanChangelog);
+  overlayChangelog.addEventListener("click", sembunyikanChangelog);
   if (!sessionStorage.getItem("changelogDitampilkan")) {
     tampilkanChangelog();
     sessionStorage.setItem("changelogDitampilkan", "true");
