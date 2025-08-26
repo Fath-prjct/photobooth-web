@@ -474,6 +474,135 @@ document.addEventListener("DOMContentLoaded", () => {
     umpanVideo.style.display = "block";
   }
 
+  function jalankanFilterArtistic() {
+    if (idAnimasiFilter) cancelAnimationFrame(idAnimasiFilter);
+
+    kanvasFilter.style.display = "block";
+    umpanVideo.style.display = "none";
+
+    kanvasFilter.width = umpanVideo.videoWidth;
+    kanvasFilter.height = umpanVideo.videoHeight;
+
+    // --- PENGATURAN FILTER ARTISTIC (SESUAI GAMBAR ANDA) ---
+    const POSTERIZATION_LEVELS = 6;
+    const EDGE_THRESHOLD = 140;
+    const COLOR_INTENSITY = 0.99; // 99% lebih intens -> 199% atau 1.99
+
+    // --- Helper Functions ---
+    function posterizeChannel(value) {
+      const step = 255 / (POSTERIZATION_LEVELS - 1);
+      return Math.round(value / step) * step;
+    }
+
+    function saturate(r, g, b, amount) {
+      const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+      const newR = -gray * amount + r * (1 + amount);
+      const newG = -gray * amount + g * (1 + amount);
+      const newB = -gray * amount + b * (1 + amount);
+      return [
+        Math.max(0, Math.min(255, newR)),
+        Math.max(0, Math.min(255, newG)),
+        Math.max(0, Math.min(255, newB)),
+      ];
+    }
+
+    function gambarFrame() {
+      if (!umpanVideo.srcObject || umpanVideo.paused || umpanVideo.ended) {
+        idAnimasiFilter = requestAnimationFrame(gambarFrame);
+        return;
+      }
+
+      // Gambar video ke canvas untuk diproses
+      const tempCtx = kanvasFilter.getContext("2d");
+      tempCtx.drawImage(
+        umpanVideo,
+        0,
+        0,
+        kanvasFilter.width,
+        kanvasFilter.height
+      );
+
+      const imageData = tempCtx.getImageData(
+        0,
+        0,
+        kanvasFilter.width,
+        kanvasFilter.height
+      );
+      const data = imageData.data;
+
+      // Buat salinan grayscale untuk deteksi tepi
+      const grayData = new Uint8ClampedArray(
+        kanvasFilter.width * kanvasFilter.height
+      );
+      for (let i = 0; i < data.length; i += 4) {
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+        grayData[i / 4] = gray;
+      }
+
+      const w = kanvasFilter.width;
+      for (let i = 0; i < data.length; i += 4) {
+        const y = Math.floor(i / 4 / w);
+        const x = (i / 4) % w;
+
+        // --- 1. Edge Detection (Sobel Operator) ---
+        // (Abaikan piksel di pinggir gambar)
+        if (y > 0 && y < kanvasFilter.height - 1 && x > 0 && x < w - 1) {
+          const i_tl = x - 1 + (y - 1) * w; // top-left
+          const i_t = x + (y - 1) * w; // top
+          const i_tr = x + 1 + (y - 1) * w; // top-right
+          const i_l = x - 1 + y * w; // left
+          const i_r = x + 1 + y * w; // right
+          const i_bl = x - 1 + (y + 1) * w; // bottom-left
+          const i_b = x + (y + 1) * w; // bottom
+          const i_br = x + 1 + (y + 1) * w; // bottom-right
+
+          const gx =
+            -grayData[i_tl] -
+            2 * grayData[i_l] -
+            grayData[i_bl] +
+            grayData[i_tr] +
+            2 * grayData[i_r] +
+            grayData[i_br];
+
+          const gy =
+            -grayData[i_tl] -
+            2 * grayData[i_t] -
+            grayData[i_tr] +
+            grayData[i_bl] +
+            2 * grayData[i_b] +
+            grayData[i_br];
+
+          const magnitude = Math.sqrt(gx * gx + gy * gy);
+
+          if (magnitude > EDGE_THRESHOLD) {
+            data[i] = 0; // Garis tepi hitam
+            data[i + 1] = 0;
+            data[i + 2] = 0;
+          } else {
+            // --- 2. Posterization & Color Intensity ---
+            const r = posterizeChannel(data[i]);
+            const g = posterizeChannel(data[i + 1]);
+            const b = posterizeChannel(data[i + 2]);
+
+            const [satR, satG, satB] = saturate(r, g, b, COLOR_INTENSITY - 1);
+
+            data[i] = satR;
+            data[i + 1] = satG;
+            data[i + 2] = satB;
+          }
+        }
+      }
+
+      tempCtx.putImageData(imageData, 0, 0);
+      idAnimasiFilter = requestAnimationFrame(gambarFrame);
+    }
+
+    gambarFrame();
+  }
+
   function tampilkanChangelog() {
     overlayChangelog.classList.add("tampil");
     popupChangelog.classList.add("tampil");
@@ -519,6 +648,9 @@ document.addEventListener("DOMContentLoaded", () => {
       umpanVideo.className = "";
       if (filter === "pixel") {
         jalankanFilterPixelArt();
+      } else if (filter === "artistic") {
+        // TAMBAHKAN BLOK INI
+        jalankanFilterArtistic();
       } else if (filter !== "none") {
         umpanVideo.classList.add(`filter-${filter}`);
       }

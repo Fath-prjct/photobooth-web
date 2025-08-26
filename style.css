@@ -461,11 +461,10 @@ body {
   gap: 1.5rem;
 }
 #kanvas-photostrip-final {
-  border: 6px solid white;
-  border-radius: var(--radius-border-utama);
   background-color: #333;
-  max-width: 35%;
+  max-width: 40%;
   height: auto;
+  box-shadow: 0 0px 10px rgba(255, 255, 255, 0.75);
 }
 .tombol-aksi-kedua {
   width: 100%;
