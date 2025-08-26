@@ -30,6 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const tombolTutupChangelog = document.getElementById(
     "tombol-tutup-changelog"
   );
+  const areaKamera = document.querySelector(".area-kamera");
 
   const labelTataLetak = document.querySelector(
     'label[for="pilihan-tata-letak"]'
@@ -488,15 +489,25 @@ document.addEventListener("DOMContentLoaded", () => {
   tombolUnduh.addEventListener("click", unduhGambar);
   document.addEventListener("keydown", tanganiTombolVolume);
   tombolUlangiSemua.addEventListener("click", kembaliKePhotobooth);
+
   pilihanTataLetak.addEventListener("change", (e) => {
     const opsiTerpilih = e.target.options[e.target.selectedIndex].text;
     labelTataLetak.textContent = opsiTerpilih;
     aturTataLetak(e.target.value);
   });
+
   pilihanTimer.addEventListener("change", (e) => {
     const opsiTerpilih = e.target.options[e.target.selectedIndex].text;
     labelTimer.textContent = opsiTerpilih;
   });
+
+  areaKamera.addEventListener("click", (event) => {
+    // Pastikan kita tidak mengklik tombol lain di dalam area kamera (seperti tombol pilih kamera)
+    if (event.target === umpanVideo || event.target === kanvasFilter) {
+      tanganiKlikAksiUtama();
+    }
+  });
+
   document.querySelector(".opsi-filter").addEventListener("click", (e) => {
     if (e.target.matches(".tombol-opsi")) {
       hentikanFilterPixelArt();
