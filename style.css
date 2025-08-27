@@ -26,13 +26,27 @@ body {
   color: var(--warna-primer);
   background-image: url("assets/gradient.png");
   background-color: #2c2c2c;
-  background-size: cover;
+  background-size: 200% 200%;
   background-position: center;
   background-repeat: no-repeat;
   background-attachment: fixed;
+  animation: gerak-gradasi 15s ease infinite;
   min-height: 100vh;
   padding: 6rem 1.5rem 1.5rem 1.5rem;
   overflow-y: auto;
+  position: relative; /* Penting untuk penumpukan halaman */
+}
+
+@keyframes gerak-gradasi {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 /* === Header Awal (Untuk Desktop) === */
@@ -72,7 +86,7 @@ body {
   color: var(--warna-aksen);
 }
 
-/* === Konten Utama === */
+/* === Konten Utama (Struktur Halaman untuk Transisi) === */
 .halaman {
   width: 100%;
   max-width: 390px;
@@ -81,10 +95,24 @@ body {
   align-items: center;
   gap: 0.25rem;
   margin: 0 auto;
+  transition: opacity 0.4s ease-in-out, visibility 0.4s ease-in-out;
+  will-change: opacity;
 }
 
 .kedua {
-  display: none !important;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  /* Membuat elemen tidak memakan ruang saat disembunyikan */
+  position: absolute;
+  top: 6rem; /* Sesuaikan dengan padding atas body */
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+#halaman-kedua {
+  /* Halaman kedua awalnya disembunyikan dengan .kedua */
+  padding-top: 2rem; /* Beri sedikit jarak dari atas */
 }
 
 .area-konten {
@@ -323,12 +351,11 @@ body {
   filter: sepia(100%);
 }
 .filter-blur {
-  filter: blur(3px); /* Angka 3px bisa diubah sesuai selera */
+  filter: blur(3px);
 }
 .filter-portra {
   filter: sepia(20%) contrast(1.05) brightness(1.1) hue-rotate(-5deg);
 }
-/* Tambahkan filter High Saturation */
 .filter-high-saturation {
   filter: saturate(180%);
 }
@@ -358,6 +385,12 @@ body {
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--warna-border-kaca);
 }
+
+.slot-thumbnail:hover {
+  transform: scale(1.05);
+  border-color: var(--warna-terang);
+}
+
 .slot-thumbnail.terpilih {
   border-color: var(--warna-aksen);
   box-shadow: 0 0 10px var(--warna-aksen);
@@ -409,10 +442,15 @@ body {
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid var(--warna-border-kaca);
 }
-.tombol-opsi.aktif,
-.tombol-opsi:hover {
+
+.tombol-opsi.aktif {
   background: rgba(255, 255, 255, 0.25);
   border-color: rgba(255, 255, 255, 0.4);
+}
+
+.tombol-opsi:not(.aktif):hover {
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
 /* === Tombol Shutter Bulat === */
@@ -457,9 +495,6 @@ body {
 }
 
 /* === Halaman Hasil & Pop-up === */
-#halaman-kedua {
-  gap: 1.5rem;
-}
 #kanvas-photostrip-final {
   background-color: #333;
   max-width: 40%;
@@ -485,6 +520,9 @@ body {
   border-radius: var(--radius-border-utama);
   cursor: pointer;
   transition: transform 0.2s ease;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
 }
 .tombol-primer:active {
   transform: scale(0.98);
@@ -582,30 +620,24 @@ body {
   color: #a7d7ff; /* Warna aksen untuk judul fitur */
 }
 
-/* === Media Query untuk Layar Kecil === */
-
-@media (min-height: 844px) {
-  .area-konten {
-    padding-top: 2rem;
-  }
-}
-
-@media (min-height: 768px) {
-  .header {
-    padding-bottom: 0.25rem;
-  }
-}
-
-@media (min-height: 667px) {
-  .header {
-    align-items: center;
-    gap: 1rem;
+/* === Penyesuaian Layout untuk Desktop & Tablet Portrait === */
+@media (min-width: 1024px),
+  (min-width: 768px) and (max-width: 1023px) and (orientation: portrait) {
+  body {
+    /* Menggunakan flexbox untuk menengahkan konten */
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Ini kunci untuk menengahkan secara vertikal */
+    align-items: center; /* Ini untuk menengahkan secara horizontal */
   }
 
-  .navigasi ul {
-    gap: 2rem;
+  /* Hapus padding atas body karena flexbox sudah menangani jarak */
+  body {
+    padding-top: 0;
   }
-  #tombol-aksi-utama {
-    margin-top: 1rem;
+
+  /* Beri jarak dari header agar tidak tertimpa */
+  .halaman {
+    margin-top: 4rem;
   }
 }

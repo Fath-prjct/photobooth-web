@@ -620,6 +620,11 @@ document.addEventListener("DOMContentLoaded", () => {
   tombolUlangiSemua.addEventListener("click", kembaliKePhotobooth);
 
   pilihanTataLetak.addEventListener("change", (e) => {
+    if (e.target.value === "grid4") {
+      alert("Maaf, fitur ini belum tersedia.");
+      e.target.value = idTataLetakSaatIni; // Kembalikan ke pilihan sebelumnya
+      return;
+    }
     const opsiTerpilih = e.target.options[e.target.selectedIndex].text;
     labelTataLetak.textContent = opsiTerpilih;
     aturTataLetak(e.target.value);
