@@ -1,15 +1,14 @@
 document.addEventListener("DOMContentLoaded", () => {
-  // --- BAGIAN PENGATURAN PENTING (HARAP ISI BAGIAN INI) ---
   const MONGO_APP_ID = "photobooth-app-yqcwhxl";
-  const CLOUDINARY_CLOUD_NAME = "dpjdj5p5v"; // Contoh: "dpjdj5p5v"
-  const CLOUDINARY_UPLOAD_PRESET = "ml_default"; // Contoh: "ml_default"
+  const CLOUDINARY_CLOUD_NAME = "dpjdj5p5v";
+  const CLOUDINARY_UPLOAD_PRESET = "ml_default";
 
-  // --- Deklarasi Variabel Elemen DOM ---
   const halamanPhotobooth = document.getElementById("halaman-utama");
   const halamankedua = document.getElementById("halaman-kedua");
   const umpanVideo = document.getElementById("umpan-video");
   const kanvasFoto = document.getElementById("kanvas-foto");
   const tombolAksiUtama = document.getElementById("tombol-aksi-utama");
+  const tombolLanjut = document.getElementById("tombol-lanjut");
   const tombolUnduh = document.getElementById("tombol-unduh");
   const tombolUlangiSemua = document.getElementById("tombol-ulangi-semua");
   const pilihanTimer = document.getElementById("pilihan-timer");
@@ -37,7 +36,6 @@ document.addEventListener("DOMContentLoaded", () => {
   );
   const labelTimer = document.querySelector('label[for="pilihan-timer"]');
 
-  // --- Konfigurasi dan State Aplikasi ---
   const PENGATURAN_LAYOUT = { strip3: { jumlah: 3 }, grid4: { jumlah: 4 } };
   let idTataLetakSaatIni = "strip3";
   let slotTerpilih = 0;
@@ -50,18 +48,14 @@ document.addEventListener("DOMContentLoaded", () => {
   let userMongoDB = null;
   const appMongoDB = new Realm.App({ id: MONGO_APP_ID });
 
-  // --- Fungsi-Fungsi Aplikasi ---
-
   async function loginMongoDB() {
     try {
       if (!userMongoDB) {
         const credentials = Realm.Credentials.anonymous();
         userMongoDB = await appMongoDB.logIn(credentials);
-        console.log("user:", userMongoDB.id);
       }
       return userMongoDB;
     } catch (err) {
-      console.error("error 102005", err);
       return null;
     }
   }
@@ -75,16 +69,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const response = await fetch(url, { method: "POST", body: formData });
       const data = await response.json();
       if (data.secure_url) {
-        console.log("src", data.secure_url);
         return data.secure_url;
       } else {
         throw new Error(
-          "Succesfully failed: " +
-            (data.error ? data.error.message : "tidak valid")
+          "Upload to Cloudinary failed: " +
+            (data.error ? data.error.message : "Unknown error")
         );
       }
     } catch (err) {
-      console.error("--- error 102005 ---", err);
       return null;
     }
   }
@@ -96,10 +88,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     try {
       await userMongoDB.functions.savePhotostrip(imageUrl);
-      console.log("Succesfully failed: ");
-    } catch (err) {
-      console.error("--- error 102005 ---", err);
-    }
+    } catch (err) {}
   }
 
   async function inisialisasiKamera(deviceId = null) {
@@ -145,7 +134,6 @@ document.addEventListener("DOMContentLoaded", () => {
         wadahTombolPilihanKamera.style.display = "none";
       }
     } catch (err) {
-      console.error("Gagal mengakses kamera: ", err);
       pesanErrorKamera.style.display = "block";
     }
   }
@@ -173,6 +161,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     pilihSlotUntukUlangi(0);
     inisialisasiSortable();
+    perbaruiVisibilitasTombolLanjut();
   }
 
   function inisialisasiSortable() {
@@ -196,14 +185,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function tanganiKlikAksiUtama() {
-    const siapUntukkedua =
-      daftarFoto.filter((foto) => foto !== null).length ===
-      PENGATURAN_LAYOUT[idTataLetakSaatIni].jumlah;
-    if (siapUntukkedua) {
-      tampilkankedua();
-      return;
-    }
     if (sedangHitungMundur) return;
+
     const durasiTimer = parseInt(pilihanTimer.value, 10);
     if (durasiTimer > 0) {
       mulaiHitungMundur(durasiTimer);
@@ -234,34 +217,44 @@ document.addEventListener("DOMContentLoaded", () => {
   function ambilFoto() {
     if (!umpanVideo.srcObject) return;
 
-    // Cek filter aktif saat ini
     const filterAktif = document.querySelector(
       ".opsi-filter .tombol-opsi.aktif"
     ).dataset.filter;
 
     const context = kanvasFoto.getContext("2d");
-    const sumberGambar = filterAktif === "pixel" ? kanvasFilter : umpanVideo;
+
+    const sumberGambar =
+      filterAktif === "pixel" || filterAktif === "artistic"
+        ? kanvasFilter
+        : umpanVideo;
 
     kanvasFoto.width = umpanVideo.videoWidth;
     kanvasFoto.height = umpanVideo.videoHeight;
 
-    // Terapkan filter CSS hanya jika bukan mode pixel
-    if (filterAktif !== "pixel") {
-      context.filter = getComputedStyle(umpanVideo).filter;
-    } else {
-      context.filter = "none"; // Pastikan tidak ada filter ganda
-    }
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.filter = "none";
 
     context.translate(kanvasFoto.width, 0);
     context.scale(-1, 1);
 
-    // Gunakan sumberGambar yang sudah ditentukan
+    if (sumberGambar === umpanVideo) {
+      const cssFilterString = getComputedStyle(umpanVideo).filter;
+
+      if (filterAktif === "blur") {
+        context.filter = "blur(6px)";
+      } else {
+        context.filter = cssFilterString;
+      }
+    }
+
     context.drawImage(sumberGambar, 0, 0, kanvasFoto.width, kanvasFoto.height);
 
     daftarFoto[slotTerpilih] = kanvasFoto.toDataURL("image/jpeg", 0.9);
     tampilkanFotoDiSlot(slotTerpilih, daftarFoto[slotTerpilih]);
     pilihSlotUntukUlangi(cariSlotKosongBerikutnya());
+    perbaruiVisibilitasTombolLanjut();
   }
+
   function cariSlotKosongBerikutnya() {
     const slotBerikutnya = daftarFoto.indexOf(null);
     return slotBerikutnya === -1 ? slotTerpilih : slotBerikutnya;
@@ -327,7 +320,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const img = new Image();
       img.onload = () => res(img);
       img.onerror = () => {
-        console.error("Gagal memuat frame:", frameTerpilih);
         res(null);
       };
       img.src = frameTerpilih;
@@ -375,23 +367,25 @@ document.addEventListener("DOMContentLoaded", () => {
     aturTataLetak(pilihanTataLetak.value);
   }
 
-  // --- Fungsi Baru: Menangani Tombol Fisik ---
   function tanganiTombolVolume(event) {
-    // Cek apakah tombol yang ditekan adalah Volume Down
-    // dan pastikan kita berada di halaman utama (bukan halaman hasil)
     if (
       event.key === "AudioVolumeDown" &&
       !halamanPhotobooth.classList.contains("kedua")
     ) {
-      // Mencegah browser menurunkan volume audio (aksi default)
       event.preventDefault();
-
-      // Memanggil fungsi shutter yang sudah ada, seolah-olah tombol di layar ditekan
       tanganiKlikAksiUtama();
     }
   }
 
-  // GANTI DENGAN FUNGSI BARU INI
+  function perbaruiVisibilitasTombolLanjut() {
+    const semuaFotoDiambil = daftarFoto.every((foto) => foto !== null);
+    if (semuaFotoDiambil) {
+      tombolLanjut.style.display = "block";
+    } else {
+      tombolLanjut.style.display = "none";
+    }
+  }
+
   function jalankanFilterPixelArt() {
     if (idAnimasiFilter) cancelAnimationFrame(idAnimasiFilter);
 
@@ -400,26 +394,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
     kanvasFilter.width = umpanVideo.videoWidth;
     kanvasFilter.height = umpanVideo.videoHeight;
+    const PIXEL_SIZE = 9;
+    const COLOR_LEVELS = 10;
 
-    // --- PENGATURAN FILTER POSTERIZE ---
-    const PIXEL_SIZE = 9; // Ukuran block pixel. Semakin besar angka, semakin kotak-kotak.
-    const COLOR_LEVELS = 10; // KUNCI UTAMA: Jumlah tingkatan warna per channel (Merah/Hijau/Biru).
-    // Coba ganti ke 2, 3, 5, atau 8 untuk efek berbeda.
-
-    // Fungsi untuk mengurangi tingkatan warna (posterize) pada satu channel (R, G, atau B)
     function posterizeChannel(value) {
       const step = 255 / (COLOR_LEVELS - 1);
       return Math.round(value / step) * step;
     }
 
-    // Fungsi utama untuk menggambar frame filter
     function gambarFrame() {
       if (!umpanVideo.srcObject || umpanVideo.paused || umpanVideo.ended) {
         idAnimasiFilter = requestAnimationFrame(gambarFrame);
         return;
       }
 
-      // 1. Gambar video ke canvas dalam ukuran kecil untuk pixelasi
       const tempCanvas = document.createElement("canvas");
       const tempCtx = tempCanvas.getContext("2d");
       const smallWidth = Math.floor(kanvasFilter.width / PIXEL_SIZE);
@@ -433,22 +421,14 @@ document.addEventListener("DOMContentLoaded", () => {
       const imageData = tempCtx.getImageData(0, 0, smallWidth, smallHeight);
       const data = imageData.data;
 
-      // 2. Proses setiap pixel kecil: terapkan efek posterize
       for (let i = 0; i < data.length; i += 4) {
-        // Ambil warna asli
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-
-        // Terapkan posterization pada setiap channel warna
-        data[i] = posterizeChannel(r); // Proses channel Merah
-        data[i + 1] = posterizeChannel(g); // Proses channel Hijau
-        data[i + 2] = posterizeChannel(b); // Proses channel Biru
+        data[i] = posterizeChannel(data[i]);
+        data[i + 1] = posterizeChannel(data[i + 1]);
+        data[i + 2] = posterizeChannel(data[i + 2]);
       }
 
       tempCtx.putImageData(imageData, 0, 0);
 
-      // 3. Gambar kembali ke kanvas utama dengan ukuran besar
       ctxFilter.imageSmoothingEnabled = false;
       ctxFilter.clearRect(0, 0, kanvasFilter.width, kanvasFilter.height);
       ctxFilter.drawImage(
@@ -482,13 +462,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     kanvasFilter.width = umpanVideo.videoWidth;
     kanvasFilter.height = umpanVideo.videoHeight;
-
-    // --- PENGATURAN FILTER ARTISTIC (SESUAI GAMBAR ANDA) ---
     const POSTERIZATION_LEVELS = 6;
     const EDGE_THRESHOLD = 140;
-    const COLOR_INTENSITY = 0.99; // 99% lebih intens -> 199% atau 1.99
+    const COLOR_INTENSITY = 0.99;
 
-    // --- Helper Functions ---
     function posterizeChannel(value) {
       const step = 255 / (POSTERIZATION_LEVELS - 1);
       return Math.round(value / step) * step;
@@ -512,7 +489,6 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
       }
 
-      // Gambar video ke canvas untuk diproses
       const tempCtx = kanvasFilter.getContext("2d");
       tempCtx.drawImage(
         umpanVideo,
@@ -529,16 +505,12 @@ document.addEventListener("DOMContentLoaded", () => {
         kanvasFilter.height
       );
       const data = imageData.data;
-
-      // Buat salinan grayscale untuk deteksi tepi
       const grayData = new Uint8ClampedArray(
         kanvasFilter.width * kanvasFilter.height
       );
       for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
-        const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+        const gray =
+          0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
         grayData[i / 4] = gray;
       }
 
@@ -547,17 +519,15 @@ document.addEventListener("DOMContentLoaded", () => {
         const y = Math.floor(i / 4 / w);
         const x = (i / 4) % w;
 
-        // --- 1. Edge Detection (Sobel Operator) ---
-        // (Abaikan piksel di pinggir gambar)
         if (y > 0 && y < kanvasFilter.height - 1 && x > 0 && x < w - 1) {
-          const i_tl = x - 1 + (y - 1) * w; // top-left
-          const i_t = x + (y - 1) * w; // top
-          const i_tr = x + 1 + (y - 1) * w; // top-right
-          const i_l = x - 1 + y * w; // left
-          const i_r = x + 1 + y * w; // right
-          const i_bl = x - 1 + (y + 1) * w; // bottom-left
-          const i_b = x + (y + 1) * w; // bottom
-          const i_br = x + 1 + (y + 1) * w; // bottom-right
+          const i_tl = x - 1 + (y - 1) * w;
+          const i_t = x + (y - 1) * w;
+          const i_tr = x + 1 + (y - 1) * w;
+          const i_l = x - 1 + y * w;
+          const i_r = x + 1 + y * w;
+          const i_bl = x - 1 + (y + 1) * w;
+          const i_b = x + (y + 1) * w;
+          const i_br = x + 1 + (y + 1) * w;
 
           const gx =
             -grayData[i_tl] -
@@ -566,7 +536,6 @@ document.addEventListener("DOMContentLoaded", () => {
             grayData[i_tr] +
             2 * grayData[i_r] +
             grayData[i_br];
-
           const gy =
             -grayData[i_tl] -
             2 * grayData[i_t] -
@@ -574,21 +543,17 @@ document.addEventListener("DOMContentLoaded", () => {
             grayData[i_bl] +
             2 * grayData[i_b] +
             grayData[i_br];
-
           const magnitude = Math.sqrt(gx * gx + gy * gy);
 
           if (magnitude > EDGE_THRESHOLD) {
-            data[i] = 0; // Garis tepi hitam
+            data[i] = 0;
             data[i + 1] = 0;
             data[i + 2] = 0;
           } else {
-            // --- 2. Posterization & Color Intensity ---
             const r = posterizeChannel(data[i]);
             const g = posterizeChannel(data[i + 1]);
             const b = posterizeChannel(data[i + 2]);
-
             const [satR, satG, satB] = saturate(r, g, b, COLOR_INTENSITY - 1);
-
             data[i] = satR;
             data[i + 1] = satG;
             data[i + 2] = satB;
@@ -613,8 +578,8 @@ document.addEventListener("DOMContentLoaded", () => {
     popupChangelog.classList.remove("tampil");
   }
 
-  // --- Pemasangan Event Listener ---
   tombolAksiUtama.addEventListener("click", tanganiKlikAksiUtama);
+  tombolLanjut.addEventListener("click", tampilkankedua);
   tombolUnduh.addEventListener("click", unduhGambar);
   document.addEventListener("keydown", tanganiTombolVolume);
   tombolUlangiSemua.addEventListener("click", kembaliKePhotobooth);
@@ -622,7 +587,7 @@ document.addEventListener("DOMContentLoaded", () => {
   pilihanTataLetak.addEventListener("change", (e) => {
     if (e.target.value === "grid4") {
       alert("Maaf, fitur ini belum tersedia.");
-      e.target.value = idTataLetakSaatIni; // Kembalikan ke pilihan sebelumnya
+      e.target.value = idTataLetakSaatIni;
       return;
     }
     const opsiTerpilih = e.target.options[e.target.selectedIndex].text;
@@ -636,7 +601,6 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   areaKamera.addEventListener("click", (event) => {
-    // Pastikan kita tidak mengklik tombol lain di dalam area kamera (seperti tombol pilih kamera)
     if (event.target === umpanVideo || event.target === kanvasFilter) {
       tanganiKlikAksiUtama();
     }
@@ -654,13 +618,13 @@ document.addEventListener("DOMContentLoaded", () => {
       if (filter === "pixel") {
         jalankanFilterPixelArt();
       } else if (filter === "artistic") {
-        // TAMBAHKAN BLOK INI
         jalankanFilterArtistic();
       } else if (filter !== "none") {
         umpanVideo.classList.add(`filter-${filter}`);
       }
     }
   });
+
   halamankedua.addEventListener("click", (e) => {
     const tombol = e.target.closest(".opsi-frame .tombol-opsi");
     if (tombol) {
@@ -672,21 +636,31 @@ document.addEventListener("DOMContentLoaded", () => {
       buatGambarAkhir();
     }
   });
+
   tombolPilihKamera.addEventListener("click", (event) => {
     event.stopPropagation();
     daftarPilihanKamera.classList.toggle("tampil");
   });
+
   document.addEventListener("click", () => {
     if (daftarPilihanKamera.classList.contains("tampil")) {
       daftarPilihanKamera.classList.remove("tampil");
     }
   });
+
   tombolTutupChangelog.addEventListener("click", sembunyikanChangelog);
   overlayChangelog.addEventListener("click", sembunyikanChangelog);
+
   if (!sessionStorage.getItem("changelogDitampilkan")) {
     tampilkanChangelog();
     sessionStorage.setItem("changelogDitampilkan", "true");
   }
+
+  const tombolHarga = document.getElementById("tombol-harga");
+  tombolHarga.addEventListener("click", (event) => {
+    event.preventDefault(); // Mencegah link berpindah halaman
+    alert("It's freemium for now and it will be paid soon.");
+  });
 
   inisialisasi();
 });

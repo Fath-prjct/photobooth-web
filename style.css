@@ -1,4 +1,3 @@
-/* === Variabel Global === */
 :root {
   --warna-primer: #ffffff;
   --warna-aksen: #ffffff76;
@@ -9,7 +8,6 @@
   --radius-border-pil: 999px;
 }
 
-/* === Reset Dasar === */
 * {
   margin: 0;
   padding: 0;
@@ -20,7 +18,6 @@ html {
   height: 100%;
 }
 
-/* === Body & Latar Belakang === */
 body {
   font-family: var(--font-utama);
   color: var(--warna-primer);
@@ -34,7 +31,7 @@ body {
   min-height: 100vh;
   padding: 6rem 1.5rem 1.5rem 1.5rem;
   overflow-y: auto;
-  position: relative; /* Penting untuk penumpukan halaman */
+  position: relative;
 }
 
 @keyframes gerak-gradasi {
@@ -49,7 +46,6 @@ body {
   }
 }
 
-/* === Header Awal (Untuk Desktop) === */
 .header {
   position: absolute;
   top: 0;
@@ -86,7 +82,6 @@ body {
   color: var(--warna-aksen);
 }
 
-/* === Konten Utama (Struktur Halaman untuk Transisi) === */
 .halaman {
   width: 100%;
   max-width: 390px;
@@ -103,16 +98,14 @@ body {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  /* Membuat elemen tidak memakan ruang saat disembunyikan */
   position: absolute;
-  top: 6rem; /* Sesuaikan dengan padding atas body */
+  top: 6rem;
   left: 50%;
   transform: translateX(-50%);
 }
 
 #halaman-kedua {
-  /* Halaman kedua awalnya disembunyikan dengan .kedua */
-  padding-top: 2rem; /* Beri sedikit jarak dari atas */
+  padding-top: 2rem;
 }
 
 .area-konten {
@@ -132,7 +125,6 @@ body {
   flex-shrink: 0;
 }
 
-/* === Dropdown Glassmorphism === */
 .pilihan-custom {
   position: relative;
   flex: 1;
@@ -175,7 +167,6 @@ body {
   cursor: pointer;
 }
 
-/* === Area Kamera & Thumbnail === */
 .pembungkus-konten-utama {
   display: flex;
   gap: 0.75rem;
@@ -214,26 +205,25 @@ body {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transform: scaleX(-1); /* Tambahkan baris ini */
-  display: none; /* Sembunyi secara default */
+  transform: scaleX(-1);
+  display: none;
 }
 
 #umpan-video {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transform: scaleX(-1); /* Tambahkan baris ini */
+  transform: scaleX(-1);
   transition: filter 0.3s ease;
 }
 
-/* === Tombol Pilihan Kamera Kustom (BARU) === */
 #wadah-tombol-pilihan-kamera {
   position: absolute;
   bottom: 10px;
   left: 10px;
   height: 36px;
   z-index: 5;
-  display: none; /* Disembunyikan oleh default, JS akan menampilkan */
+  display: none;
 }
 
 #tombol-pilih-kamera {
@@ -244,14 +234,10 @@ body {
   border-radius: 50%;
   cursor: pointer;
   transition: background-color 0.2s ease, transform 0.2s ease;
-
-  /* Style Glassmorphism */
   background: rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(5px);
   -webkit-backdrop-filter: blur(5px);
   border: 1px solid rgba(255, 255, 255, 0.5);
-
-  /* Ikon Kamera (SVG) */
   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>');
   background-position: center;
   background-repeat: no-repeat;
@@ -268,9 +254,9 @@ body {
 
 #daftar-pilihan-kamera {
   position: absolute;
-  bottom: 48px; /* Posisi di atas tombol */
+  bottom: 48px;
   left: 0;
-  display: none; /* Disembunyikan */
+  display: none;
   flex-direction: column;
   gap: 5px;
   background: rgba(0, 0, 0, 0.7);
@@ -279,11 +265,10 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 12px;
   padding: 8px;
-  width: max-content; /* Lebar menyesuaikan konten */
+  width: max-content;
   max-width: 200px;
 }
 
-/* Kelas 'tampil' untuk memunculkan daftar */
 #daftar-pilihan-kamera.tampil {
   display: flex;
 }
@@ -308,7 +293,6 @@ body {
   background-color: rgba(255, 255, 255, 0.2);
 }
 
-/* === Overlay & Pesan Error === */
 #overlay-timer {
   position: absolute;
   font-size: 7rem;
@@ -340,7 +324,6 @@ body {
   font-size: 0.9rem;
 }
 
-/* === Filter Video === */
 .filter-bw {
   filter: grayscale(100%);
 }
@@ -360,7 +343,6 @@ body {
   filter: saturate(180%);
 }
 
-/* === Thumbnail Glassmorphism === */
 #wadah-thumbnail {
   display: flex;
   flex-direction: column;
@@ -401,7 +383,6 @@ body {
   object-fit: cover;
 }
 
-/* === Tombol Opsi Glassmorphism === */
 .grup-opsi {
   display: flex;
   flex-direction: column;
@@ -453,7 +434,6 @@ body {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
 }
 
-/* === Tombol Shutter Bulat === */
 #tombol-aksi-utama {
   width: 50px;
   height: 50px;
@@ -469,7 +449,6 @@ body {
   font-size: 0;
   padding: 0;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  margin-top: 0.25rem;
 }
 #tombol-aksi-utama:hover {
   transform: scale(1.05);
@@ -494,7 +473,6 @@ body {
   border-radius: 50%;
 }
 
-/* === Halaman Hasil & Pop-up === */
 #kanvas-photostrip-final {
   background-color: #333;
   max-width: 40%;
@@ -617,27 +595,54 @@ body {
 }
 
 .daftar-changelog li strong {
-  color: #a7d7ff; /* Warna aksen untuk judul fitur */
+  color: #a7d7ff;
 }
 
-/* === Penyesuaian Layout untuk Desktop & Tablet Portrait === */
 @media (min-width: 1024px),
   (min-width: 768px) and (max-width: 1023px) and (orientation: portrait) {
   body {
-    /* Menggunakan flexbox untuk menengahkan konten */
     display: flex;
     flex-direction: column;
-    justify-content: center; /* Ini kunci untuk menengahkan secara vertikal */
-    align-items: center; /* Ini untuk menengahkan secara horizontal */
+    justify-content: center;
+    align-items: center;
   }
 
-  /* Hapus padding atas body karena flexbox sudah menangani jarak */
   body {
     padding-top: 0;
   }
 
-  /* Beri jarak dari header agar tidak tertimpa */
   .halaman {
     margin-top: 4rem;
   }
+}
+
+.wadah-tombol-aksi {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+  height: 60px;
+  width: 100%;
+  position: relative;
+}
+
+#tombol-aksi-utama {
+  margin-top: 0;
+  position: relative;
+}
+
+#tombol-lanjut {
+  display: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: white;
+  font-size: 1.5rem;
+  font-weight: bold;
+  padding: 0;
+  text-shadow: 0 2px 5px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
+  position: absolute;
+  transform: translateX(110px);
 }
