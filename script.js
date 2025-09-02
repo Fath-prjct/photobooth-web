@@ -1,22 +1,21 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const MONGO_APP_ID = "photobooth-app-yqcwhxl";
-  const CLOUDINARY_CLOUD_NAME = "dpjdj5p5v";
-  const CLOUDINARY_UPLOAD_PRESET = "ml_default";
-
   const halamanPhotobooth = document.getElementById("halaman-utama");
   const halamankedua = document.getElementById("halaman-kedua");
   const umpanVideo = document.getElementById("umpan-video");
   const kanvasFoto = document.getElementById("kanvas-foto");
   const tombolAksiUtama = document.getElementById("tombol-aksi-utama");
   const tombolLanjut = document.getElementById("tombol-lanjut");
+  const CLOUDINARY_UPLOAD_PRESET = "ml_default";
   const tombolUnduh = document.getElementById("tombol-unduh");
   const tombolUlangiSemua = document.getElementById("tombol-ulangi-semua");
   const pilihanTimer = document.getElementById("pilihan-timer");
   const pilihanTataLetak = document.getElementById("pilihan-tata-letak");
   const wadahThumbnail = document.getElementById("wadah-thumbnail");
+  const CLOUDINARY_CLOUD_NAME = "dpjdj5p5v";
   const overlayTimer = document.getElementById("overlay-timer");
   const kanvasFinal = document.getElementById("kanvas-photostrip-final");
   const pesanErrorKamera = document.getElementById("pesan-error-kamera");
+  const MONGO_APP_ID = "photobooth-app-yqcwhxl";
   const wadahTombolPilihanKamera = document.getElementById(
     "wadah-tombol-pilihan-kamera"
   );
@@ -30,6 +29,11 @@ document.addEventListener("DOMContentLoaded", () => {
     "tombol-tutup-changelog"
   );
   const areaKamera = document.querySelector(".area-kamera");
+
+  // --- BARU: Referensi untuk elemen Share ---
+  const tombolBagikan = document.getElementById("tombol-bagikan");
+  const kanvasStoryFinal = document.getElementById("kanvas-story-final");
+  // ----------------------------------------
 
   const labelTataLetak = document.querySelector(
     'label[for="pilihan-tata-letak"]'
@@ -361,6 +365,99 @@ document.addEventListener("DOMContentLoaded", () => {
     document.body.removeChild(link);
   }
 
+  // --- BARU: Fungsi untuk membuat gambar format Story ---
+  function buatGambarStory() {
+    const ctx = kanvasStoryFinal.getContext("2d");
+    const sourceCanvas = kanvasFinal;
+
+    // Set dimensi kanvas Story (rasio 9:16)
+    kanvasStoryFinal.width = 1080;
+    kanvasStoryFinal.height = 1920;
+
+    // 1. Gambar latar belakang yang blur
+    ctx.filter = "blur(25px) brightness(0.7)";
+    ctx.drawImage(
+      sourceCanvas,
+      0,
+      0,
+      kanvasStoryFinal.width,
+      kanvasStoryFinal.height
+    );
+
+    // Reset filter
+    ctx.filter = "none";
+
+    // 2. Gambar photostrip utama di tengah
+    const margin = 0.9; // 90% dari tinggi kanvas
+    const canvasRatio = kanvasStoryFinal.width / kanvasStoryFinal.height;
+    const sourceRatio = sourceCanvas.width / sourceCanvas.height;
+
+    let targetWidth, targetHeight, x, y;
+
+    // Skalakan photostrip agar pas di dalam kanvas dengan margin
+    targetHeight = kanvasStoryFinal.height * margin;
+    targetWidth = targetHeight * sourceRatio;
+
+    if (targetWidth > kanvasStoryFinal.width * margin) {
+      targetWidth = kanvasStoryFinal.width * margin;
+      targetHeight = targetWidth / sourceRatio;
+    }
+
+    // Posisikan di tengah
+    x = (kanvasStoryFinal.width - targetWidth) / 2;
+    y = (kanvasStoryFinal.height - targetHeight) / 2;
+
+    ctx.shadowColor = "rgba(0,0,0,0.5)";
+    ctx.shadowBlur = 30;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 10;
+
+    ctx.drawImage(sourceCanvas, x, y, targetWidth, targetHeight);
+
+    ctx.shadowColor = "transparent"; // Reset bayangan
+  }
+
+  // --- BARU: Fungsi untuk berbagi atau mengunduh gambar Story ---
+  async function bagikanGambar() {
+    buatGambarStory();
+    const fileName = `story-lateral-${Date.now()}.png`;
+
+    // Cek apakah Web Share API didukung
+    if (navigator.share) {
+      kanvasStoryFinal.toBlob(async (blob) => {
+        const file = new File([blob], fileName, { type: blob.type });
+        const shareData = {
+          files: [file],
+          title: "Hasil Photobooth-ku!",
+          text: "Dibuat dengan Lateral Photobooth",
+        };
+        try {
+          if (navigator.canShare(shareData)) {
+            await navigator.share(shareData);
+          } else {
+            throw new Error("Tidak dapat membagikan data ini");
+          }
+        } catch (err) {
+          // Jika pengguna membatalkan atau terjadi error, fallback ke unduh
+          console.error("Share failed:", err.message);
+          const link = document.createElement("a");
+          link.download = fileName;
+          link.href = kanvasStoryFinal.toDataURL("image/png");
+          link.click();
+        }
+      }, "image/png");
+    } else {
+      // Fallback untuk desktop: langsung unduh
+      alert(
+        "Browser Anda tidak mendukung fitur berbagi. File akan diunduh sebagai gantinya."
+      );
+      const link = document.createElement("a");
+      link.download = fileName;
+      link.href = kanvasStoryFinal.toDataURL("image/png");
+      link.click();
+    }
+  }
+
   function kembaliKePhotobooth() {
     halamankedua.classList.add("kedua");
     halamanPhotobooth.classList.remove("kedua");
@@ -581,6 +678,7 @@ document.addEventListener("DOMContentLoaded", () => {
   tombolAksiUtama.addEventListener("click", tanganiKlikAksiUtama);
   tombolLanjut.addEventListener("click", tampilkankedua);
   tombolUnduh.addEventListener("click", unduhGambar);
+  tombolBagikan.addEventListener("click", bagikanGambar); // --- BARU: Event listener untuk tombol share ---
   document.addEventListener("keydown", tanganiTombolVolume);
   tombolUlangiSemua.addEventListener("click", kembaliKePhotobooth);
 
