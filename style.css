@@ -681,14 +681,23 @@ body {
 }
 
 .collab-foto-lain {
+  /* Dihapus — diganti oleh kanvas compositor */
+  display: none !important;
+}
+
+/* Canvas compositor collab — menampilkan semua stream yang di-blend */
+#kanvas-compositor-collab {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.45;
+  z-index: 5;
   pointer-events: none;
+  /* Mirror seperti video asli */
+  transform: scaleX(-1);
+  display: none;
 }
 
 #kanvas-bg-removal {
