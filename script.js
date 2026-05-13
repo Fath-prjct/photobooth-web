@@ -50,6 +50,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let idAnimasiFilter = null;
 let amIHost = false;
 let lastCommandTs = 0;
+let inCollabMode = false;
 
  
 
@@ -215,13 +216,13 @@ let lastCommandTs = 0;
     kanvasFoto.width = umpanVideo.videoWidth;
     kanvasFoto.height = umpanVideo.videoHeight;
 
-    context.setTransform(1, 0, 0, 1, 0, 0);
-    context.filter = "none";
-
-    // Modifikasi: Selalu balik foto secara horizontal (mirror) APAPUN sumbernya
-    // agar hasilnya 100% sama dengan apa yang dilihat user di layar
-    context.translate(kanvasFoto.width, 0);
-    context.scale(-1, 1);
+    
+  context.setTransform(1, 0, 0, 1, 0, 0);
+  context.clearRect(0, 0, kanvasFoto.width, kanvasFoto.height);
+  
+  // PENTING: Lakukan transformasi mirror di sini
+  context.translate(kanvasFoto.width, 0);
+  context.scale(-1, 1);
 
     if (sumberGambar === umpanVideo || sumberGambar === kanvasBgRemoval) {
       const cssFilterString = getComputedStyle(sumberGambar).filter;
@@ -233,7 +234,19 @@ let lastCommandTs = 0;
       }
     }
 
-    context.drawImage(sumberGambar, 0, 0, kanvasFoto.width, kanvasFoto.height);
+    context.save();
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.clearRect(0, 0, kanvasFoto.width, kanvasFoto.height);
+    
+    // Balik horizontal (Mirror)
+    context.translate(kanvasFoto.width, 0);
+    context.scale(-1, 1);
+
+    // Jika Remove BG aktif, ambil dari kanvasBgRemoval, jika tidak dari video
+    const sumber = removeBgAktif ? kanvasBgRemoval : sumberGambar;
+    
+    context.drawImage(sumber, 0, 0, kanvasFoto.width, kanvasFoto.height);
+    context.restore(); // Kembalikan ke normal
 
     daftarFoto[slotTerpilih] = kanvasFoto.toDataURL("image/jpeg", 0.9);
     tampilkanFotoDiSlot(slotTerpilih, daftarFoto[slotTerpilih]);
@@ -656,12 +669,13 @@ let lastCommandTs = 0;
   }
 
 tombolAksiUtama.addEventListener("click", () => {
-    // BARU: Jika saya Host, suruh yang lain ikutan jepret
-    if (collabModule && amIHost) {
-      collabModule.kirimPerintah({ aksi: 'MULAI_FOTO' });
+    if (inCollabMode && amIHost && window.collabMod) {
+      window.collabMod.kirimPerintah({ aksi: 'MULAI_FOTO' });
     }
-    tanganiKlikAksiUtama(); // Saya sendiri juga jepret
-  });  tombolLanjut.addEventListener("click", tampilkankedua);
+    tanganiKlikAksiUtama();
+  });
+
+  tombolLanjut.addEventListener("click", tampilkankedua);
   tombolUnduh.addEventListener("click", unduhGambar);
   tombolBagikan.addEventListener("click", bagikanGambar); // --- BARU: Event listener untuk tombol share ---
   document.addEventListener("keydown", tanganiTombolVolume);
@@ -812,6 +826,12 @@ pilihanTimer.addEventListener("change", (e) => {
       ctxBgRemoval.fillRect(0, 0, kanvasBgRemoval.width, kanvasBgRemoval.height);
 
       ctxBgRemoval.restore();
+      if (inCollabMode && window.collabMod) {
+         // Ambil gambar dari kanvas yang sudah di-remove BG-nya
+         const streamData = kanvasBgRemoval.toDataURL("image/webp", 0.2); 
+         window.collabMod.updateStreamKu(streamData);
+      }
+
     });
     
     return seg;
@@ -864,6 +884,13 @@ pilihanTimer.addEventListener("change", (e) => {
     } else {
       nonaktifkanRemoveBg(); 
     }
+    if (inCollabMode && amIHost && window.collabMod) {
+      window.collabMod.kirimPerintah({ 
+        aksi: 'SYNC_SETTING', 
+        removeBg: removeBgAktif, 
+        warnaBg: warnaBgSaatIni 
+      });
+    }
   });
 
  
@@ -891,32 +918,35 @@ pilihanTimer.addEventListener("change", (e) => {
   // Kita observasi via MutationObserver pada wadahThumbnail → saat img baru muncul, replace dengan versi BG removed.
 
   const observerThumbnail = new MutationObserver((mutations) => {
-    if (!removeBgAktif) return;
-    mutations.forEach((mutation) => {
-      mutation.addedNodes.forEach((node) => {
-        if (node.nodeType === 1 && node.tagName === "IMG") {
-          // Ganti foto yang baru ditangkap dengan versi BG removed
-          const slotIndex = parseInt(node.closest(".slot-thumbnail")?.dataset.slot ?? "-1");
-          if (slotIndex < 0) return;
+  if (!removeBgAktif) return;
+  mutations.forEach((mutation) => {
+    mutation.addedNodes.forEach((node) => {
+      if (node.nodeType === 1 && node.tagName === "IMG") {
+        const slotIndex = parseInt(node.closest(".slot-thumbnail")?.dataset.slot ?? "-1");
+        if (slotIndex < 0) return;
 
-          // Ambil dari kanvasBgRemoval saat ini (frame terbaru)
-          const bgCanvas = document.createElement("canvas");
-          bgCanvas.width = kanvasBgRemoval.width;
-          bgCanvas.height = kanvasBgRemoval.height;
-          const bgCtx = bgCanvas.getContext("2d");
-          bgCtx.drawImage(kanvasBgRemoval, 0, 0);
-          const newDataUrl = bgCanvas.toDataURL("image/jpeg", 0.9);
-          node.src = newDataUrl;
-          daftarFoto[slotIndex] = newDataUrl;
+        // Buat kanvas sementara untuk melakukan mirroring
+        const bgCanvas = document.createElement("canvas");
+        bgCanvas.width = kanvasBgRemoval.width;
+        bgCanvas.height = kanvasBgRemoval.height;
+        const bgCtx = bgCanvas.getContext("2d");
 
-          // Sync ke collab jika aktif
-          if (window._collabUploadFoto) {
-            window._collabUploadFoto(newDataUrl, slotIndex);
-          }
+        // PROSES MIRRORING DI SINI
+        bgCtx.translate(bgCanvas.width, 0);
+        bgCtx.scale(-1, 1);
+        bgCtx.drawImage(kanvasBgRemoval, 0, 0);
+
+        const newDataUrl = bgCanvas.toDataURL("image/jpeg", 0.9);
+        node.src = newDataUrl;
+        daftarFoto[slotIndex] = newDataUrl;
+
+        if (window._collabUploadFoto) {
+          window._collabUploadFoto(newDataUrl, slotIndex);
         }
-      });
+      }
     });
   });
+});
 
   observerThumbnail.observe(wadahThumbnail, { childList: true, subtree: true });
 
@@ -989,13 +1019,14 @@ pilihanTimer.addEventListener("change", (e) => {
     collabStatusBar.classList.add("tampil");
     collabRoomCodeDisplay.textContent = kode;
     
-    // BARU: Kunci UI jika dia Guest
     if (!amIHost) {
+      // Jika Guest: Matikan tombol shutter & sembunyikan filter
       tombolAksiUtama.style.pointerEvents = "none";
       tombolAksiUtama.style.opacity = "0.5";
       pilihanTimer.disabled = true;
-      document.querySelector(".opsi-filter").style.display = "none"; // Sembunyikan filter
+      document.querySelector(".opsi-filter").style.display = "none";
     } else {
+      // Jika Host: Aktifkan semua kontrol
       tombolAksiUtama.style.pointerEvents = "auto";
       tombolAksiUtama.style.opacity = "1";
       pilihanTimer.disabled = false;
@@ -1047,24 +1078,28 @@ pilihanTimer.addEventListener("change", (e) => {
         mod.uploadFotoCollab(dataUrl, slotIndex).catch(console.warn);
       };
 
-      // Listen untuk foto dari orang lain
       mod.dengarkânFotoCollab(({ fotoOrangLain, command }) => {
+        // 1. Tampilkan wajah teman (Streaming)
         renderFotoCollabDiKamera(fotoOrangLain);
-        
-        // BARU: Guest mendengarkan perintah Host
+
+        // 2. Jika saya Guest, ikuti perintah Host
         if (!amIHost && command && command.ts > lastCommandTs) {
            lastCommandTs = command.ts;
+           
            if (command.aksi === 'MULAI_FOTO') {
               tanganiKlikAksiUtama(); 
            }
            if (command.aksi === 'SYNC_SETTING') {
               if (command.timer) pilihanTimer.value = command.timer;
-              
-              // Terapkan filter secara lokal dengan mengklik tombol filter yang sesuai
               if (command.filter) {
-                 const tombolFilterTarget = document.querySelector(`.opsi-filter .tombol-opsi[data-filter='${command.filter}']`);
-                 if (tombolFilterTarget) tombolFilterTarget.click();
+                 const btn = document.querySelector(`.opsi-filter .tombol-opsi[data-filter='${command.filter}']`);
+                 if (btn) btn.click();
               }
+              // Sinkronkan Background
+              if (command.removeBg !== undefined) {
+                 command.removeBg ? aktifkanRemoveBg() : nonaktifkanRemoveBg();
+              }
+              if (command.warnaBg) warnaBgSaatIni = command.warnaBg;
            }
         }
       });

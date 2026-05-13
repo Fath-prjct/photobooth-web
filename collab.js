@@ -111,15 +111,24 @@ export async function keluarRoom() {
   myUserId = null;
 }
 
+
+export function getRoomCode() { return roomCode; }
+export function getUserId() { return myUserId; }
+export function isInRoom() { return !!roomCode; }
+
 export async function kirimPerintah(perintah) {
   if (!db || !roomCode) return;
-  // Perintah berisi: { aksi: 'Mulai_Foto', timer: 3, filter: 'sepia', timestamp: Date.now() }
   await set(ref(db, `rooms/${roomCode}/command`), {
     ...perintah,
     ts: Date.now()
   });
 }
 
-export function getRoomCode() { return roomCode; }
-export function getUserId() { return myUserId; }
-export function isInRoom() { return !!roomCode; }
+export async function updateStreamKu(dataUrl) {
+  if (!db || !roomCode || !myUserId) return;
+  // Gunakan set agar data lama tertimpa (menghemat storage Firebase)
+  await set(ref(db, `rooms/${roomCode}/streams/${myUserId}`), {
+    data: dataUrl,
+    ts: Date.now()
+  });
+}
