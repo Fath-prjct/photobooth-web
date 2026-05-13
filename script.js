@@ -846,106 +846,230 @@ pilihanTimer.addEventListener("change", (e) => {
   tombolRemoveBg.addEventListener("click", () => {
     if (removeBgAktif) {
       nonaktifkanRemoveBg();
+      if (inCollabMode && amIHost && window.collabMod) {
+        window.collabMod.kirimPerintah({ aksi: 'SYNC_SETTING', removeBg: false, warnaBg: warnaBgSaatIni });
+      }
     } else {
       inputWarnaCustom.click();
       aktifkanRemoveBg();
-    }
-    if (inCollabMode && amIHost && window.collabMod) {
-      window.collabMod.simpanHostSettings({ removeBg: !removeBgAktif, warnaBg: warnaBgSaatIni });
-      window.collabMod.kirimPerintah({ aksi: 'SYNC_SETTING', removeBg: !removeBgAktif, warnaBg: warnaBgSaatIni });
+      if (inCollabMode && amIHost && window.collabMod) {
+        window.collabMod.kirimPerintah({ aksi: 'SYNC_SETTING', removeBg: true, warnaBg: warnaBgSaatIni });
+      }
     }
   });
 
   inputWarnaCustom.addEventListener("input", (e) => {
     warnaBgSaatIni = e.target.value;
     if (inCollabMode && amIHost && window.collabMod) {
-      window.collabMod.simpanHostSettings({ removeBg: removeBgAktif, warnaBg: warnaBgSaatIni });
       window.collabMod.kirimPerintah({ aksi: 'SYNC_SETTING', removeBg: removeBgAktif, warnaBg: warnaBgSaatIni });
     }
   });
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // COLLAB COMPOSITOR — Canvas yang menggabungkan semua stream secara real-time
-  // Layering: guest (order tinggi) di bawah → host (order=0) di atas
+  // COLLAB COMPOSITOR — SPLIT SCREEN SIDE BY SIDE
+  //
+  // Konsep: setiap peserta stream kamera diri sendiri (sudah di-remove BG kalau aktif).
+  // Canvas compositor menampilkan semua orang BERDAMPINGAN dalam satu frame,
+  // seolah-olah mereka foto bareng di tempat yang sama.
+  //
+  // Layout:  2 orang → [host | guest1]
+  //          3 orang → [host | guest1 | guest2]  dst
+  //
+  // Host selalu di slot KIRI. Background warna dari host berlaku untuk semua.
+  // Stream masing-masing dikirim mentah (siluet saja jika remove BG aktif).
+  // Compositor di sisi viewer yang menggabungkan dan menampilkan hasil akhir.
   // ═══════════════════════════════════════════════════════════════════════════
 
-  // Canvas compositor untuk collab — hidden, dipakai sebagai sumber stream & foto
+  // Canvas compositor — menggantikan tampilan video area kamera saat collab
   const kanvasCompositor = document.createElement("canvas");
   kanvasCompositor.id = "kanvas-compositor-collab";
-  kanvasCompositor.style.cssText = `
-    position:absolute; top:0; left:0; width:100%; height:100%;
-    display:none; object-fit:cover; z-index:5; pointer-events:none;
-    transform:scaleX(-1);
-  `;
+  kanvasCompositor.style.cssText = [
+    "position:absolute", "top:0", "left:0", "width:100%", "height:100%",
+    "display:none", "z-index:6", "pointer-events:none",
+    "object-fit:contain"
+  ].join(";");
   areaKamera.appendChild(kanvasCompositor);
   const ctxCompositor = kanvasCompositor.getContext("2d");
 
-  // State stream orang lain: { userId: { img: HTMLImageElement, order: number, ts: number } }
+  // Cache stream orang lain: { uid: { img, order, ts, removeBg } }
   let streamCache = {};
   let idLoopCompositor = null;
-  let myStreamOrder = 0; // order saya (0=host, 1=guest1, dst)
+  let myStreamOrder = 0;
 
-  // Fungsi utama compositor: gambar frame composite
+  // ── Ambil sumber frame "saya" (video / bg-removal / filter canvas) ────────
+  function getSumberFrameSaya() {
+    const filterAktif = document.querySelector(".opsi-filter .tombol-opsi.aktif")?.dataset.filter || "none";
+    if (removeBgAktif) return kanvasBgRemoval;
+    if (filterAktif === "pixel" || filterAktif === "artistic") return kanvasFilter;
+    return umpanVideo;
+  }
+
+  // ── Gambar satu sumber ke dalam slot rect di canvas, dengan mirror & cover ──
+  function gambarSlotKeCanvas(ctx, src, x, y, slotW, slotH, mirror = true) {
+    const srcW = src.videoWidth || src.naturalWidth || src.width || slotW;
+    const srcH = src.videoHeight || src.naturalHeight || src.height || slotH;
+    if (!srcW || !srcH) return;
+
+    // Object-fit: cover dalam slot
+    const scaleX = slotW / srcW, scaleY = slotH / srcH;
+    const scale = Math.max(scaleX, scaleY);
+    const drawW = srcW * scale, drawH = srcH * scale;
+    const offX = (slotW - drawW) / 2, offY = (slotH - drawH) / 2;
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x, y, slotW, slotH); // clip ke slot
+    ctx.clip();
+
+    if (mirror) {
+      // Flip horizontal dalam slot
+      ctx.translate(x + slotW, y);
+      ctx.scale(-1, 1);
+      ctx.drawImage(src, offX, offY, drawW, drawH);
+    } else {
+      // Stream dari Firebase sudah dalam orientasi yang benar (sudah di-flip saat dikirim)
+      ctx.translate(x, y);
+      ctx.drawImage(src, offX, offY, drawW, drawH);
+    }
+    ctx.restore();
+  }
+
+  // ── Loop utama compositor ─────────────────────────────────────────────────
   function gambarFrameCompositor() {
-    if (!inCollabMode) { idLoopCompositor = requestAnimationFrame(gambarFrameCompositor); return; }
+    idLoopCompositor = requestAnimationFrame(gambarFrameCompositor);
+    if (!inCollabMode) return;
 
     const vidW = umpanVideo.videoWidth || 640;
     const vidH = umpanVideo.videoHeight || 480;
-    if (kanvasCompositor.width !== vidW) kanvasCompositor.width = vidW;
-    if (kanvasCompositor.height !== vidH) kanvasCompositor.height = vidH;
 
-    ctxCompositor.clearRect(0, 0, vidW, vidH);
-
-    // Kumpulkan semua layer: { order, drawFn }
-    // Semua peserta dirender, yang order lebih besar (bergabung belakangan) digambar lebih dulu (di belakang)
-    const layers = [];
-
-    // Layer saya sendiri
-    const mySrc = removeBgAktif ? kanvasBgRemoval : (
-      (document.querySelector(".opsi-filter .tombol-opsi.aktif")?.dataset.filter === "pixel" ||
-       document.querySelector(".opsi-filter .tombol-opsi.aktif")?.dataset.filter === "artistic")
-        ? kanvasFilter : umpanVideo
-    );
-    layers.push({ order: myStreamOrder, src: mySrc, isCanvas: true });
-
-    // Layer orang lain dari cache
+    // Kumpulkan semua peserta diurutkan berdasarkan join order
+    // Host (order 0) di kiri, guest berikutnya ke kanan
+    const semuaPeserta = [{ uid: "me", order: myStreamOrder, isMe: true }];
     Object.entries(streamCache).forEach(([uid, info]) => {
-      if (info.img && info.img.complete && info.img.naturalWidth > 0) {
-        layers.push({ order: info.order, src: info.img, isCanvas: false });
+      semuaPeserta.push({ uid, order: info.order, isMe: false, info });
+    });
+    semuaPeserta.sort((a, b) => a.order - b.order);
+
+    const jumlah = semuaPeserta.length;
+    // Canvas composite: lebar = vidW * jumlah, tinggi = vidH
+    // Tapi kita batasi agar tidak terlalu lebar — tiap slot 16:9
+    const slotW = vidW;
+    const slotH = vidH;
+    const totalW = slotW * jumlah;
+
+    if (kanvasCompositor.width !== totalW) kanvasCompositor.width = totalW;
+    if (kanvasCompositor.height !== slotH) kanvasCompositor.height = slotH;
+
+    // Background warna host untuk seluruh canvas
+    ctxCompositor.fillStyle = warnaBgSaatIni;
+    ctxCompositor.fillRect(0, 0, totalW, slotH);
+
+    semuaPeserta.forEach((peserta, idx) => {
+      const slotX = idx * slotW;
+      if (peserta.isMe) {
+        // Gambar stream saya sendiri (dengan mirror — karena dari kamera langsung)
+        const src = getSumberFrameSaya();
+        if (src && (src.videoWidth || src.naturalWidth || src.width)) {
+          gambarSlotKeCanvas(ctxCompositor, src, slotX, 0, slotW, slotH, true);
+        }
+      } else {
+        // Gambar stream orang lain (TIDAK di-mirror karena sudah di-flip saat dikirim)
+        const info = peserta.info;
+        if (info && info.img && info.img.complete && info.img.naturalWidth > 0) {
+          gambarSlotKeCanvas(ctxCompositor, info.img, slotX, 0, slotW, slotH, false);
+        } else {
+          // Placeholder saat stream belum masuk
+          ctxCompositor.save();
+          ctxCompositor.fillStyle = "rgba(0,0,0,0.3)";
+          ctxCompositor.fillRect(slotX, 0, slotW, slotH);
+          ctxCompositor.fillStyle = "rgba(255,255,255,0.6)";
+          ctxCompositor.font = `${slotH * 0.06}px Poppins, sans-serif`;
+          ctxCompositor.textAlign = "center";
+          ctxCompositor.fillText("Menunggu teman...", slotX + slotW / 2, slotH / 2);
+          ctxCompositor.restore();
+        }
       }
     });
 
-    // Urutkan: order besar (guest) digambar lebih dulu (bawah), order kecil (host) terakhir (atas)
-    layers.sort((a, b) => b.order - a.order);
-
-    layers.forEach(({ src }) => {
-      if (!src) return;
-      const srcW = src.videoWidth || src.width || src.naturalWidth || vidW;
-      const srcH = src.videoHeight || src.height || src.naturalHeight || vidH;
-      // Object-fit: cover — crop tengah
-      const scaleX = vidW / srcW, scaleY = vidH / srcH;
-      const scale = Math.max(scaleX, scaleY);
-      const drawW = srcW * scale, drawH = srcH * scale;
-      const ox = (vidW - drawW) / 2, oy = (vidH - drawH) / 2;
-      ctxCompositor.drawImage(src, ox, oy, drawW, drawH);
-    });
-
-    // Kirim stream composite saya ke Firebase (tanpa mirroring — mirroring ada di CSS)
-    if (window.collabMod) {
-      // Ambil dari composite tapi tanpa flip (Firebase menyimpan raw, CSS yang flip)
-      const streamData = kanvasCompositor.toDataURL("image/webp", 0.25);
-      window.collabMod.updateStreamKu(streamData);
+    // Garis pembagi tipis antar slot
+    if (jumlah > 1) {
+      ctxCompositor.save();
+      ctxCompositor.strokeStyle = "rgba(255,255,255,0.25)";
+      ctxCompositor.lineWidth = 2;
+      for (let i = 1; i < jumlah; i++) {
+        ctxCompositor.beginPath();
+        ctxCompositor.moveTo(i * slotW, 0);
+        ctxCompositor.lineTo(i * slotW, slotH);
+        ctxCompositor.stroke();
+      }
+      ctxCompositor.restore();
     }
 
-    idLoopCompositor = requestAnimationFrame(gambarFrameCompositor);
+    // Kirim stream "saya saja" (bukan composite penuh) ke Firebase
+    // Agar setiap orang punya kamera sendiri yang bisa digabungkan di sisi penerima
+    kirimStreamSendiri();
   }
 
+  // ── Kirim frame kamera saya sendiri ke Firebase (bukan composite) ─────────
+  let _streamCanvas = null;
+  let _streamCtx = null;
+  function kirimStreamSendiri() {
+    if (!window.collabMod) return;
+    const src = getSumberFrameSaya();
+    const srcW = src?.videoWidth || src?.width || src?.naturalWidth || 0;
+    const srcH = src?.videoHeight || src?.height || src?.naturalHeight || 0;
+    if (!srcW || !srcH) return;
+
+    // Buat canvas kecil untuk stream (hemat bandwidth)
+    const streamW = Math.min(srcW, 480);
+    const streamH = Math.round(srcH * (streamW / srcW));
+    if (!_streamCanvas) {
+      _streamCanvas = document.createElement("canvas");
+      _streamCtx = _streamCanvas.getContext("2d");
+    }
+    _streamCanvas.width = streamW;
+    _streamCanvas.height = streamH;
+
+    // Kirim dengan mirror — orang lain akan lihat kita mirror (seperti selfie yang wajar)
+    _streamCtx.save();
+    _streamCtx.translate(streamW, 0);
+    _streamCtx.scale(-1, 1);
+    _streamCtx.drawImage(src, 0, 0, streamW, streamH);
+    _streamCtx.restore();
+
+    const data = _streamCanvas.toDataURL("image/webp", 0.3);
+    window.collabMod.updateStreamKu(data);
+  }
+
+  // ── Update cache stream dari Firebase ─────────────────────────────────────
+  function updateStreamCache(streamOrangLain, userOrders) {
+    const activeUids = Object.keys(streamOrangLain);
+    // Bersihkan yang sudah keluar
+    Object.keys(streamCache).forEach(uid => {
+      if (!activeUids.includes(uid)) delete streamCache[uid];
+    });
+    // Update/tambah
+    activeUids.forEach(uid => {
+      const sd = streamOrangLain[uid];
+      if (!sd?.data) return;
+      if (!streamCache[uid]) {
+        streamCache[uid] = { img: new Image(), order: sd.order ?? 999, ts: 0 };
+      }
+      if (sd.ts !== streamCache[uid].ts) {
+        streamCache[uid].ts = sd.ts;
+        streamCache[uid].order = sd.order ?? (userOrders?.[uid] ?? 999);
+        streamCache[uid].img.src = sd.data;
+      }
+    });
+  }
+
+  // ── Mulai / Hentikan compositor ───────────────────────────────────────────
   function mulaiCompositor() {
-    kanvasCompositor.style.display = "block";
-    // Sembunyikan video asli dan kanvas lain, compositor yang tampil
+    // Sembunyikan semua elemen video/canvas asli
     umpanVideo.style.display = "none";
     kanvasBgRemoval.style.display = "none";
     kanvasFilter.style.display = "none";
+    kanvasCompositor.style.display = "block";
     if (!idLoopCompositor) gambarFrameCompositor();
   }
 
@@ -953,88 +1077,32 @@ pilihanTimer.addEventListener("change", (e) => {
     if (idLoopCompositor) { cancelAnimationFrame(idLoopCompositor); idLoopCompositor = null; }
     kanvasCompositor.style.display = "none";
     umpanVideo.style.display = "block";
-    if (removeBgAktif) kanvasBgRemoval.style.display = "block";
+    if (removeBgAktif) {
+      kanvasBgRemoval.style.display = "block";
+      umpanVideo.style.display = "none";
+    }
   }
 
-  // Update cache stream dari Firebase
-  function updateStreamCache(streamOrangLain, userOrders) {
-    // Hapus stream user yang sudah keluar
-    const activeUids = Object.keys(streamOrangLain);
-    Object.keys(streamCache).forEach(uid => {
-      if (!activeUids.includes(uid)) delete streamCache[uid];
-    });
-
-    // Update atau buat entry baru
-    activeUids.forEach(uid => {
-      const streamData = streamOrangLain[uid];
-      if (!streamData || !streamData.data) return;
-      if (!streamCache[uid]) {
-        streamCache[uid] = { img: new Image(), order: streamData.order ?? 999, ts: 0 };
-      }
-      // Hanya update gambar jika ada data baru (ts berbeda)
-      if (streamData.ts !== streamCache[uid].ts) {
-        streamCache[uid].ts = streamData.ts;
-        streamCache[uid].order = streamData.order ?? (userOrders[uid] ?? 999);
-        streamCache[uid].img.src = streamData.data;
-      }
-    });
-  }
-
-  // ── Ambil foto composite (sumber = kanvasCompositor saat collab, normal jika solo) ──
-  // Override ambilFoto agar saat collab pakai kanvas compositor sebagai sumber
-  const _ambilFotoOriginal = ambilFoto;
+  // ── Ambil foto composite (persis seperti yang terlihat di layar) ──────────
   function ambilFotoCollab() {
     if (!umpanVideo.srcObject) return;
 
-    const filterAktif = document.querySelector(".opsi-filter .tombol-opsi.aktif")?.dataset.filter || "none";
-    const context = kanvasFoto.getContext("2d");
+    // Dimensi canvas compositor = slotW * jumlahPeserta × slotH
+    const compW = kanvasCompositor.width || umpanVideo.videoWidth;
+    const compH = kanvasCompositor.height || umpanVideo.videoHeight;
 
-    if (inCollabMode) {
-      // Sumber adalah compositor (sudah composite semua orang)
-      kanvasFoto.width = kanvasCompositor.width || umpanVideo.videoWidth;
-      kanvasFoto.height = kanvasCompositor.height || umpanVideo.videoHeight;
-      context.save();
-      context.setTransform(1, 0, 0, 1, 0, 0);
-      context.clearRect(0, 0, kanvasFoto.width, kanvasFoto.height);
-      // Mirror: compositor sudah scaleX(-1) via CSS tapi data canvas tidak ikut CSS,
-      // jadi kita mirror manual saat ambil foto
-      context.translate(kanvasFoto.width, 0);
-      context.scale(-1, 1);
-      context.drawImage(kanvasCompositor, 0, 0, kanvasFoto.width, kanvasFoto.height);
-      context.restore();
-    } else {
-      // Solo mode: perilaku asli
-      const sumberGambar = (filterAktif === "pixel" || filterAktif === "artistic")
-        ? kanvasFilter : umpanVideo;
-      kanvasFoto.width = umpanVideo.videoWidth;
-      kanvasFoto.height = umpanVideo.videoHeight;
-      context.save();
-      context.setTransform(1, 0, 0, 1, 0, 0);
-      context.clearRect(0, 0, kanvasFoto.width, kanvasFoto.height);
-      context.translate(kanvasFoto.width, 0);
-      context.scale(-1, 1);
-      const sumber = removeBgAktif ? kanvasBgRemoval : sumberGambar;
-      context.drawImage(sumber, 0, 0, kanvasFoto.width, kanvasFoto.height);
-      context.restore();
-    }
+    kanvasFoto.width = compW;
+    kanvasFoto.height = compH;
 
-    const filterCss = getComputedStyle(umpanVideo).filter;
-    if (filterAktif !== "none" && filterAktif !== "pixel" && filterAktif !== "artistic" && !inCollabMode) {
-      // Apply CSS filter ke kanvas hasil
-      const temp = document.createElement("canvas");
-      temp.width = kanvasFoto.width;
-      temp.height = kanvasFoto.height;
-      const tCtx = temp.getContext("2d");
-      tCtx.filter = filterCss;
-      tCtx.drawImage(kanvasFoto, 0, 0);
-      context.clearRect(0, 0, kanvasFoto.width, kanvasFoto.height);
-      context.drawImage(temp, 0, 0);
-    }
+    const ctx = kanvasFoto.getContext("2d");
+    ctx.clearRect(0, 0, compW, compH);
+    // Salin langsung dari compositor — sudah benar orientasinya
+    ctx.drawImage(kanvasCompositor, 0, 0, compW, compH);
 
     daftarFoto[slotTerpilih] = kanvasFoto.toDataURL("image/jpeg", 0.9);
     tampilkanFotoDiSlot(slotTerpilih, daftarFoto[slotTerpilih]);
 
-    // Upload foto ke collab
+    // Upload foto composite ke collab (opsional, untuk referensi)
     if (window._collabUploadFoto) {
       window._collabUploadFoto(daftarFoto[slotTerpilih], slotTerpilih);
     }

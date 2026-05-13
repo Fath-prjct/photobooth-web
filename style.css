@@ -685,19 +685,20 @@ body {
   display: none !important;
 }
 
-/* Canvas compositor collab — menampilkan semua stream yang di-blend */
+/* Canvas compositor collab — menampilkan side-by-side stream semua peserta */
 #kanvas-compositor-collab {
   position: absolute;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  z-index: 5;
+  /* object-fit: contain agar canvas composite (lebar ganda) tetap muat di area kamera */
+  object-fit: contain;
+  z-index: 6;
   pointer-events: none;
-  /* Mirror seperti video asli */
-  transform: scaleX(-1);
   display: none;
+  /* TIDAK ada transform:scaleX(-1) — mirroring dilakukan di dalam canvas JS */
+  background: transparent;
 }
 
 #kanvas-bg-removal {
