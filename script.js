@@ -1164,7 +1164,7 @@ pilihanTimer.addEventListener("change", (e) => {
     popupCollab.classList.remove("tampil");
   }
 
-  tombolCollab.addEventListener("click", (e) => { e.preventDefault(); tampilkanPopupCollab(); });
+  //tombolCollab.addEventListener("click", (e) => { e.preventDefault(); tampilkanPopupCollab(); });
   tombolTutupCollab.addEventListener("click", sembunyikanPopupCollab);
   overlayCollab.addEventListener("click", sembunyikanPopupCollab);
 
@@ -1363,4 +1363,11 @@ pilihanTimer.addEventListener("change", (e) => {
       tombolHamburger.querySelector("i").classList.replace("fa-xmark", "fa-bars");
     });
   });
+  const btnCollab = document.getElementById("nav-collab");
+if (btnCollab) {
+    btnCollab.addEventListener("click", (e) => {
+        e.preventDefault();
+        alert("Collab Feature: Work in Progress");
+    });
+}
 });
