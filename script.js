@@ -15,7 +15,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const overlayTimer = document.getElementById("overlay-timer");
   const kanvasFinal = document.getElementById("kanvas-photostrip-final");
   const pesanErrorKamera = document.getElementById("pesan-error-kamera");
-  const MONGO_APP_ID = "photobooth-app-yqcwhxl";
   const wadahTombolPilihanKamera = document.getElementById(
     "wadah-tombol-pilihan-kamera"
   );
@@ -49,20 +48,10 @@ document.addEventListener("DOMContentLoaded", () => {
   let instanceSortable = null;
   let daftarKamera = [];
   let idAnimasiFilter = null;
-  let userMongoDB = null;
-  const appMongoDB = new Realm.App({ id: MONGO_APP_ID });
+let amIHost = false;
+let lastCommandTs = 0;
 
-  async function loginMongoDB() {
-    try {
-      if (!userMongoDB) {
-        const credentials = Realm.Credentials.anonymous();
-        userMongoDB = await appMongoDB.logIn(credentials);
-      }
-      return userMongoDB;
-    } catch (err) {
-      return null;
-    }
-  }
+ 
 
   async function uploadKeCloudinary(dataUrl) {
     const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`;
@@ -85,15 +74,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  async function simpanKeMongoDB(imageUrl) {
-    if (!userMongoDB) {
-      await loginMongoDB();
-      if (!userMongoDB) return;
-    }
-    try {
-      await userMongoDB.functions.savePhotostrip(imageUrl);
-    } catch (err) {}
-  }
+  
 
   async function inisialisasiKamera(deviceId = null) {
     if (umpanVideo.srcObject) {
@@ -145,7 +126,6 @@ document.addEventListener("DOMContentLoaded", () => {
   async function inisialisasi() {
     await inisialisasiKamera();
     aturTataLetak(pilihanTataLetak.value);
-    loginMongoDB();
   }
 
   function aturTataLetak(idTataLetak) {
@@ -238,11 +218,13 @@ document.addEventListener("DOMContentLoaded", () => {
     context.setTransform(1, 0, 0, 1, 0, 0);
     context.filter = "none";
 
+    // Modifikasi: Selalu balik foto secara horizontal (mirror) APAPUN sumbernya
+    // agar hasilnya 100% sama dengan apa yang dilihat user di layar
     context.translate(kanvasFoto.width, 0);
     context.scale(-1, 1);
 
-    if (sumberGambar === umpanVideo) {
-      const cssFilterString = getComputedStyle(umpanVideo).filter;
+    if (sumberGambar === umpanVideo || sumberGambar === kanvasBgRemoval) {
+      const cssFilterString = getComputedStyle(sumberGambar).filter;
 
       if (filterAktif === "blur") {
         context.filter = "blur(6px)";
@@ -294,9 +276,7 @@ document.addEventListener("DOMContentLoaded", () => {
     await buatGambarAkhir();
     const dataUrlFinal = kanvasFinal.toDataURL("image/png");
     const imageUrl = await uploadKeCloudinary(dataUrlFinal);
-    if (imageUrl) {
-      await simpanKeMongoDB(imageUrl);
-    }
+    
   }
 
   async function buatGambarAkhir() {
@@ -675,8 +655,13 @@ document.addEventListener("DOMContentLoaded", () => {
     popupChangelog.classList.remove("tampil");
   }
 
-  tombolAksiUtama.addEventListener("click", tanganiKlikAksiUtama);
-  tombolLanjut.addEventListener("click", tampilkankedua);
+tombolAksiUtama.addEventListener("click", () => {
+    // BARU: Jika saya Host, suruh yang lain ikutan jepret
+    if (collabModule && amIHost) {
+      collabModule.kirimPerintah({ aksi: 'MULAI_FOTO' });
+    }
+    tanganiKlikAksiUtama(); // Saya sendiri juga jepret
+  });  tombolLanjut.addEventListener("click", tampilkankedua);
   tombolUnduh.addEventListener("click", unduhGambar);
   tombolBagikan.addEventListener("click", bagikanGambar); // --- BARU: Event listener untuk tombol share ---
   document.addEventListener("keydown", tanganiTombolVolume);
@@ -693,10 +678,18 @@ document.addEventListener("DOMContentLoaded", () => {
     aturTataLetak(e.target.value);
   });
 
-  pilihanTimer.addEventListener("change", (e) => {
+  // 1. Saat Host ganti Timer
+pilihanTimer.addEventListener("change", (e) => {
     const opsiTerpilih = e.target.options[e.target.selectedIndex].text;
     labelTimer.textContent = opsiTerpilih;
+    
+    // BARU: Host lapor ke Firebase kalau timer diubah
+    if (collabModule && amIHost) {
+      collabModule.kirimPerintah({ aksi: 'SYNC_SETTING', timer: e.target.value });
+    }
   });
+
+
 
   areaKamera.addEventListener("click", (event) => {
     if (event.target === umpanVideo || event.target === kanvasFilter) {
@@ -713,12 +706,20 @@ document.addEventListener("DOMContentLoaded", () => {
       e.target.classList.add("aktif");
       const filter = e.target.dataset.filter;
       umpanVideo.className = "";
+      kanvasBgRemoval.className = "";
+      
+      // BARU: Host lapor ke Firebase kalau filter diubah
+      if (collabModule && amIHost) {
+        collabModule.kirimPerintah({ aksi: 'SYNC_SETTING', filter: filter });
+      }
+
       if (filter === "pixel") {
         jalankanFilterPixelArt();
       } else if (filter === "artistic") {
         jalankanFilterArtistic();
       } else if (filter !== "none") {
         umpanVideo.classList.add(`filter-${filter}`);
+        kanvasBgRemoval.classList.add(`filter-${filter}`);
       }
     }
   });
@@ -760,5 +761,382 @@ document.addEventListener("DOMContentLoaded", () => {
     alert("It's freemium for now and it will be paid soon.");
   });
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // PATCH: REMOVE BACKGROUND (MediaPipe) + COLLAB FOTO (Firebase)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ── Remove Background ─────────────────────────────────────────────────────
+  const tombolRemoveBg = document.getElementById("tombol-remove-bg");
+  const kanvasBgRemoval = document.getElementById("kanvas-bg-removal");
+  const ctxBgRemoval = kanvasBgRemoval.getContext("2d");
+  const inputWarnaCustom = document.getElementById("input-warna-bg-custom");
+
+  let removeBgAktif = false;
+  let warnaBgSaatIni = "#ffffff";
+  let selfieSegmentation = null;
+  let cameraUtilsInstance = null;
+  let idAnimasiBgRemoval = null;
+
+  function buatSelfieSegmentation() {
+    if (!window.SelfieSegmentation) return null;
+    const seg = new SelfieSegmentation({
+      locateFile: (file) =>
+        `https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/${file}`,
+    });
+    
+    // UBAH 1: modelSelection 0 (HD), dan selfieMode: false (agar tidak bentrok dengan mirror CSS)
+    seg.setOptions({ modelSelection: 0, selfieMode: false });
+    
+    // UBAH 2: Logika rendering baru yang lebih halus tanpa nge-lag
+    seg.onResults((results) => {
+      if (!removeBgAktif) return;
+
+      kanvasBgRemoval.width = results.image.width;
+      kanvasBgRemoval.height = results.image.height;
+      
+      ctxBgRemoval.save();
+      ctxBgRemoval.clearRect(0, 0, kanvasBgRemoval.width, kanvasBgRemoval.height);
+
+      // A. Cetak mask & blur tepinya 4px agar halus (feathering)
+      ctxBgRemoval.filter = 'blur(4px)'; 
+      ctxBgRemoval.drawImage(results.segmentationMask, 0, 0, kanvasBgRemoval.width, kanvasBgRemoval.height);
+      ctxBgRemoval.filter = 'none'; // matikan blur
+
+      // B. Masukkan foto orang ke dalam mask
+      ctxBgRemoval.globalCompositeOperation = 'source-in';
+      ctxBgRemoval.drawImage(results.image, 0, 0, kanvasBgRemoval.width, kanvasBgRemoval.height);
+
+      // C. Siram warna kustom di belakang orangnya
+      ctxBgRemoval.globalCompositeOperation = 'destination-atop';
+      ctxBgRemoval.fillStyle = warnaBgSaatIni;
+      ctxBgRemoval.fillRect(0, 0, kanvasBgRemoval.width, kanvasBgRemoval.height);
+
+      ctxBgRemoval.restore();
+    });
+    
+    return seg;
+  }
+
+  async function aktifkanRemoveBg() {
+    if (!window.SelfieSegmentation) {
+      alert("MediaPipe belum termuat. Coba segarkan halaman.");
+      return;
+    }
+    removeBgAktif = true;
+    tombolRemoveBg.classList.add("aktif");
+    kanvasBgRemoval.style.display = "block";
+    umpanVideo.style.opacity = "0";
+
+    if (!selfieSegmentation) {
+      selfieSegmentation = buatSelfieSegmentation();
+    }
+
+    // Loop send frames ke segmentasi
+    async function kirimFrame() {
+      if (!removeBgAktif) return;
+      if (umpanVideo.readyState >= 2) {
+        await selfieSegmentation.send({ image: umpanVideo });
+      }
+      idAnimasiBgRemoval = requestAnimationFrame(kirimFrame);
+    }
+    kirimFrame();
+  }
+
+  function nonaktifkanRemoveBg() {
+    removeBgAktif = false;
+    tombolRemoveBg.classList.remove("aktif");
+    kanvasBgRemoval.style.display = "none";
+    umpanVideo.style.opacity = "1";
+    if (idAnimasiBgRemoval) {
+      cancelAnimationFrame(idAnimasiBgRemoval);
+      idAnimasiBgRemoval = null;
+    }
+  }
+
+ tombolRemoveBg.addEventListener("click", () => {
+    removeBgAktif = !removeBgAktif; 
+    tombolRemoveBg.classList.toggle("aktif");
+
+    if (removeBgAktif) {
+      // Ini yang akan membuat dialog warna langsung "pop-up" saat tombol diklik
+      inputWarnaCustom.click(); 
+      aktifkanRemoveBg(); 
+    } else {
+      nonaktifkanRemoveBg(); 
+    }
+  });
+
+ 
+
+  inputWarnaCustom.addEventListener("input", (e) => {
+    warnaBgSaatIni = e.target.value;
+    document.querySelectorAll(".tombol-warna-bg").forEach(b => b.classList.remove("aktif"));
+  });
+
+  // ── Patch ambilFoto: pakai kanvas BG removal saat aktif ──────────────────
+  // Override sumber gambar saat remove BG aktif
+  const _ambilFotoAsli = ambilFoto;
+  // Kita patch lewat event: saat remove BG aktif, kanvasBgRemoval dipakai sebagai source
+  // Ini dilakukan dengan memonitor dan mengganti sumber di dalam ambilFoto
+  // Karena ambilFoto pakai umpanVideo secara langsung, kita perlu intercept
+
+  // Cara termudah: tambahkan hook ke kanvasFoto.getContext setelah drawImage
+  // Alternatif lebih bersih: patch global sebelum drawImage
+  // Kita pakai pendekatan: setelah foto diambil, jika removeBg aktif → replace dengan BG removed version
+
+  const originalAmbilFoto = window._patchedAmbilFoto || null;
+
+  // Karena ambilFoto() adalah closure di scope DOMContentLoaded, kita tidak bisa override langsung.
+  // Cara yang benar: tambahkan post-processing setelah daftarFoto diisi.
+  // Kita observasi via MutationObserver pada wadahThumbnail → saat img baru muncul, replace dengan versi BG removed.
+
+  const observerThumbnail = new MutationObserver((mutations) => {
+    if (!removeBgAktif) return;
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach((node) => {
+        if (node.nodeType === 1 && node.tagName === "IMG") {
+          // Ganti foto yang baru ditangkap dengan versi BG removed
+          const slotIndex = parseInt(node.closest(".slot-thumbnail")?.dataset.slot ?? "-1");
+          if (slotIndex < 0) return;
+
+          // Ambil dari kanvasBgRemoval saat ini (frame terbaru)
+          const bgCanvas = document.createElement("canvas");
+          bgCanvas.width = kanvasBgRemoval.width;
+          bgCanvas.height = kanvasBgRemoval.height;
+          const bgCtx = bgCanvas.getContext("2d");
+          bgCtx.drawImage(kanvasBgRemoval, 0, 0);
+          const newDataUrl = bgCanvas.toDataURL("image/jpeg", 0.9);
+          node.src = newDataUrl;
+          daftarFoto[slotIndex] = newDataUrl;
+
+          // Sync ke collab jika aktif
+          if (window._collabUploadFoto) {
+            window._collabUploadFoto(newDataUrl, slotIndex);
+          }
+        }
+      });
+    });
+  });
+
+  observerThumbnail.observe(wadahThumbnail, { childList: true, subtree: true });
+
+  // Juga sync foto normal ke collab saat tidak pakai remove BG
+  const observerThumbnailCollab = new MutationObserver((mutations) => {
+    if (removeBgAktif) return; // sudah ditangani observer di atas
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach((node) => {
+        if (node.nodeType === 1 && node.tagName === "IMG") {
+          const slotIndex = parseInt(node.closest(".slot-thumbnail")?.dataset.slot ?? "-1");
+          if (slotIndex < 0 || !window._collabUploadFoto) return;
+          window._collabUploadFoto(node.src, slotIndex);
+        }
+      });
+    });
+  });
+
+  observerThumbnailCollab.observe(wadahThumbnail, { childList: true, subtree: true });
+
+  // ── Collab ────────────────────────────────────────────────────────────────
+  const tombolCollab = document.getElementById("tombol-collab");
+  const overlayCollab = document.getElementById("overlay-collab");
+  const popupCollab = document.getElementById("popup-collab");
+  const tombolTutupCollab = document.getElementById("tombol-tutup-collab");
+  const tombolBuatRoom = document.getElementById("tombol-buat-room");
+  const tombolGabungRoom = document.getElementById("tombol-gabung-room");
+  const inputKodeRoom = document.getElementById("input-kode-room");
+  const collabPesanEl = document.getElementById("collab-popup-pesan");
+  const collabStatusBar = document.getElementById("collab-status-bar");
+  const collabRoomCodeDisplay = document.getElementById("collab-room-code-display");
+  const collabPeersText = document.getElementById("collab-peers-text");
+  const tombolSalinKode = document.getElementById("tombol-salin-kode");
+  const collabNotchInfo = document.getElementById("collab-notch-info");
+  const tombolKeluarRoom = document.getElementById("tombol-keluar-room");
+
+  // Overlay preview foto orang lain di atas area kamera
+  let elFotoCollabPreview = null;
+
+  function tampilkanPopupCollab() {
+    overlayCollab.classList.add("tampil");
+    popupCollab.classList.add("tampil");
+    collabPesanEl.textContent = "";
+    inputKodeRoom.value = "";
+  }
+  function sembunyikanPopupCollab() {
+    overlayCollab.classList.remove("tampil");
+    popupCollab.classList.remove("tampil");
+  }
+
+  tombolCollab.addEventListener("click", (e) => {
+    e.preventDefault();
+    tampilkanPopupCollab();
+  });
+  tombolTutupCollab.addEventListener("click", sembunyikanPopupCollab);
+  overlayCollab.addEventListener("click", sembunyikanPopupCollab);
+
+  // Import collab functions dinamis (modul di collab.js)
+  let collabModule = null;
+  async function muatModulCollab() {
+    if (collabModule) return collabModule;
+    try {
+      collabModule = await import("./collab.js");
+      return collabModule;
+    } catch (e) {
+      throw new Error("Gagal memuat modul collab. Pastikan file collab.js ada dan Firebase dikonfigurasi.");
+    }
+  }
+
+  function aktifkanStatusBar(kode) {
+    collabStatusBar.classList.add("tampil");
+    collabRoomCodeDisplay.textContent = kode;
+    
+    // BARU: Kunci UI jika dia Guest
+    if (!amIHost) {
+      tombolAksiUtama.style.pointerEvents = "none";
+      tombolAksiUtama.style.opacity = "0.5";
+      pilihanTimer.disabled = true;
+      document.querySelector(".opsi-filter").style.display = "none"; // Sembunyikan filter
+    } else {
+      tombolAksiUtama.style.pointerEvents = "auto";
+      tombolAksiUtama.style.opacity = "1";
+      pilihanTimer.disabled = false;
+      document.querySelector(".opsi-filter").style.display = "flex";
+    }
+  }
+
+  
+
+  function renderFotoCollabDiKamera(fotoOrangLain) {
+    // Tampilkan foto terbaru dari user lain sebagai overlay tipis di area kamera
+    const semuaFoto = [];
+    Object.values(fotoOrangLain).forEach((slots) => {
+      Object.values(slots).forEach((slotData) => {
+        if (slotData && slotData.data) semuaFoto.push(slotData.data);
+      });
+    });
+
+    if (!elFotoCollabPreview) {
+      elFotoCollabPreview = document.createElement("img");
+      elFotoCollabPreview.className = "collab-foto-lain";
+      areaKamera.appendChild(elFotoCollabPreview);
+    }
+
+    if (semuaFoto.length > 0) {
+      elFotoCollabPreview.src = semuaFoto[semuaFoto.length - 1];
+      elFotoCollabPreview.style.display = "block";
+    } else {
+      elFotoCollabPreview.style.display = "none";
+    }
+  }
+
+  async function masukRoom(mode, kode = null) {
+    collabPesanEl.textContent = "Menghubungkan...";
+    tombolBuatRoom.disabled = true;
+    tombolGabungRoom.disabled = true;
+    try {
+      const mod = await muatModulCollab();
+      let result;
+      if (mode === "buat") {
+        result = await mod.buatRoom();
+      } else {
+        if (!kode || kode.trim().length < 4) throw new Error("Masukkan kode room yang valid.");
+        result = await mod.gabungRoom(kode.trim().toUpperCase());
+      }
+
+      // Set global upload function
+      window._collabUploadFoto = (dataUrl, slotIndex) => {
+        mod.uploadFotoCollab(dataUrl, slotIndex).catch(console.warn);
+      };
+
+      // Listen untuk foto dari orang lain
+      mod.dengarkânFotoCollab(({ fotoOrangLain, command }) => {
+        renderFotoCollabDiKamera(fotoOrangLain);
+        
+        // BARU: Guest mendengarkan perintah Host
+        if (!amIHost && command && command.ts > lastCommandTs) {
+           lastCommandTs = command.ts;
+           if (command.aksi === 'MULAI_FOTO') {
+              tanganiKlikAksiUtama(); 
+           }
+           if (command.aksi === 'SYNC_SETTING') {
+              if (command.timer) pilihanTimer.value = command.timer;
+              
+              // Terapkan filter secara lokal dengan mengklik tombol filter yang sesuai
+              if (command.filter) {
+                 const tombolFilterTarget = document.querySelector(`.opsi-filter .tombol-opsi[data-filter='${command.filter}']`);
+                 if (tombolFilterTarget) tombolFilterTarget.click();
+              }
+           }
+        }
+      });
+
+      collabPesanEl.textContent = `Berhasil masuk room ${result.roomCode}!`;
+      setTimeout(() => {
+        sembunyikanPopupCollab();
+        aktifkanStatusBar(result.roomCode);
+      }, 1000);
+
+    } catch (err) {
+      collabPesanEl.textContent = `Error: ${err.message}`;
+    } finally {
+      tombolBuatRoom.disabled = false;
+      tombolGabungRoom.disabled = false;
+    }
+  }
+
+  tombolBuatRoom.addEventListener("click", () => {
+    amIHost = true; // Jika bikin room, saya Host
+    masukRoom("buat");
+  });
+  
+  tombolGabungRoom.addEventListener("click", () => {
+    amIHost = false; // Jika sekadar gabung, saya Guest
+    masukRoom("gabung", inputKodeRoom.value);
+  });
+  inputKodeRoom.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") masukRoom("gabung", inputKodeRoom.value);
+    inputKodeRoom.value = inputKodeRoom.value.toUpperCase();
+  });
+
+  collabNotchInfo.addEventListener("click", () => {
+    const kode = collabRoomCodeDisplay.textContent;
+    if (kode && kode !== "----" && kode !== "Disalin!") {
+      navigator.clipboard.writeText(kode).then(() => {
+        collabRoomCodeDisplay.textContent = "Disalin!";
+        setTimeout(() => { 
+          collabRoomCodeDisplay.textContent = kode; 
+        }, 2000);
+      });
+    }
+  });
+
+  tombolKeluarRoom.addEventListener("click", async () => {
+    if (!collabModule) return;
+    await collabModule.keluarRoom();
+    window._collabUploadFoto = null;
+    collabStatusBar.classList.remove("tampil");
+    if (elFotoCollabPreview) elFotoCollabPreview.style.display = "none";
+  });
+
+  // ── Fine ─────────────────────────────────────────────────────────────────
+
   inisialisasi();
+  const tombolHamburger = document.getElementById("tombol-hamburger");
+  const menuNavigasi = document.getElementById("menu-navigasi");
+
+  tombolHamburger.addEventListener("click", () => {
+    menuNavigasi.classList.toggle("tampil");
+    const icon = tombolHamburger.querySelector("i");
+    if (menuNavigasi.classList.contains("tampil")) {
+      icon.classList.replace("fa-bars", "fa-xmark");
+    } else {
+      icon.classList.replace("fa-xmark", "fa-bars");
+    }
+  });
+
+  menuNavigasi.querySelectorAll("a").forEach(link => {
+    link.addEventListener("click", () => {
+      menuNavigasi.classList.remove("tampil");
+      tombolHamburger.querySelector("i").classList.replace("fa-xmark", "fa-bars");
+    });
+  });
 });

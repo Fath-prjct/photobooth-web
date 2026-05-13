@@ -19,7 +19,13 @@
     />
     <link rel="stylesheet" href="style.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
-    <script src="https://unpkg.com/realm-web/dist/bundle.iife.js"></script>
+    <!-- MediaPipe Selfie Segmentation -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/selfie_segmentation/selfie_segmentation.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <!-- Config API Keys (jangan di-commit ke git) -->
+    <script src="config.js"></script>
+    <!-- Firebase for Collab -->
+    <script type="module" src="collab.js"></script>
   </head>
   <body>
     <header class="header">
@@ -28,11 +34,15 @@
           <img src="assets/logo (Traced).png" alt="Logo Anda" height="30" />
         </a>
       </div>
-      <nav class="navigasi">
+      <button class="hamburger" id="tombol-hamburger">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+      <nav class="navigasi" id="menu-navigasi">
         <ul>
           <li><a href="https://fath.netlify.app/">About</a></li>
           <li><a href="https://fath.netlify.app/">Contact</a></li>
           <li><a href="#" id="tombol-harga">Price</a></li>
+          <li><a href="#" id="tombol-collab">Collab</a></li>
         </ul>
       </nav>
     </header>
@@ -66,6 +76,7 @@
             <div class="area-kamera">
               <video id="umpan-video" autoplay playsinline></video>
               <canvas id="kanvas-filter"></canvas>
+              <canvas id="kanvas-bg-removal"></canvas>
               <div id="overlay-timer"></div>
               <canvas id="kanvas-foto"></canvas>
               <div id="pesan-error-kamera">
@@ -83,6 +94,15 @@
           </div>
         </div>
         <div class="grup-opsi">
+          <!-- Remove BG toggle -->
+          <div class="opsi-atas" style="margin-bottom:0; position:relative;">
+            <button id="tombol-remove-bg" class="tombol-opsi" style="flex:1">
+              Remove Background
+            </button>
+            <input type="color" id="input-warna-bg-custom" value="#ffffff" style="opacity: 0; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: none; width: 1px; height: 1px;">
+          </div>
+          <!-- Background color picker — muncul saat remove BG aktif -->
+          <input type="color" id="input-warna-bg-custom" value="#ffffff" style="display:none;">
           <div class="opsi-filter wadah-opsi">
             <button class="tombol-opsi aktif" data-filter="none">Normal</button>
             <button class="tombol-opsi" data-filter="bw">B&W</button>
@@ -161,7 +181,48 @@
           <strong>Filter Baru:</strong> Menambahkan filter Blur, Portra, dan
           High Saturation untuk mempercantik foto Anda.
         </li>
+        <li>
+          <strong>Collab Foto:</strong> Foto bareng teman dalam satu frame! Klik "Collab" di nav, share kode room, dan foto kalian akan digabung otomatis.
+        </li>
+        <li>
+          <strong>Remove Background:</strong> Hapus background kamera secara real-time dan ganti dengan warna pilihan Anda.
+        </li>
       </ul>
+    </div>
+
+    <!-- Collab Status Bar — Notch Style -->
+    <div id="collab-status-bar">
+      <div id="collab-notch-pill" tabindex="0">
+        <div id="collab-notch-info" title="Klik untuk salin kode">
+          <span id="collab-notch-dot"></span>
+          <span id="collab-room-code-display">----</span>
+        </div>
+        <button id="tombol-keluar-room">Keluar</button>
+      </div>
+    </div>
+
+    <!-- Collab Popup -->
+    <div id="overlay-collab" class="overlay-popup"></div>
+    <div id="popup-collab" class="popup">
+      <button id="tombol-tutup-collab" class="tombol-tutup-popup">&times;</button>
+      <h2>Collab Foto</h2>
+      <p style="text-align:center;font-size:0.85rem;opacity:0.8;margin-bottom:1.5rem;">Foto bareng teman dalam satu photostrip! Setiap orang motret sendiri, hasilnya digabung otomatis.</p>
+      <div style="display:flex;flex-direction:column;gap:1rem;">
+        <button id="tombol-buat-room" class="tombol-primer" style="width:100%;font-size:0.95rem;">
+          Buat Room Baru
+        </button>
+        <div style="display:flex;align-items:center;gap:0.75rem;">
+          <div style="flex:1;height:1px;background:rgba(255,255,255,0.2)"></div>
+          <span style="font-size:0.8rem;opacity:0.6">atau</span>
+          <div style="flex:1;height:1px;background:rgba(255,255,255,0.2)"></div>
+        </div>
+        <div style="display:flex;gap:0.5rem;">
+          <input id="input-kode-room" type="text" placeholder="Masukkan kode room (mis. ABCD)" maxlength="6"
+            style="flex:1;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:white;padding:0.75rem 1rem;border-radius:var(--radius-border-utama);font-family:var(--font-utama);font-size:1rem;text-transform:uppercase;letter-spacing:0.15em;outline:none;">
+          <button id="tombol-gabung-room" class="tombol-primer" style="flex-shrink:0;max-width:80px;font-size:0.85rem;">Gabung</button>
+        </div>
+        <p id="collab-popup-pesan" style="text-align:center;font-size:0.8rem;color:#a7d7ff;min-height:1.2em;"></p>
+      </div>
     </div>
 
     <script src="script.js"></script>

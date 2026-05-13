@@ -647,3 +647,214 @@ body {
   position: absolute;
   transform: translateX(110px);
 }
+
+/* ===== FITUR BARU: Remove BG + Collab ===== */
+
+#tombol-remove-bg.aktif {
+  background: rgba(167, 215, 255, 0.3);
+  border-color: rgba(167, 215, 255, 0.6);
+}
+
+
+
+.tombol-warna-bg:hover {
+  transform: scale(1.15);
+}
+
+#tombol-remove-bg.aktif {
+  background: rgba(255, 255, 255, 0.25); /* Sesuaikan jika warna aktif filtermu berbeda */
+  border-color: rgba(255, 255, 255, 0.4); /* Sesuaikan jika warna aktif filtermu berbeda */
+}
+
+#collab-status-bar {
+  font-family: var(--font-utama);
+}
+
+#input-kode-room::placeholder {
+  opacity: 0.5;
+  letter-spacing: normal;
+}
+
+#input-kode-room:focus {
+  border-color: rgba(167, 215, 255, 0.7);
+  background: rgba(255,255,255,0.15);
+}
+
+.collab-foto-lain {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+#kanvas-bg-removal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  display: none;
+}
+
+/* ===== COLLAB NOTCH STATUS BAR ===== */
+
+#collab-status-bar {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1100;
+  font-family: var(--font-utama);
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.35));
+}
+
+#collab-status-bar.tampil {
+  display: block;
+}
+
+#collab-notch-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+     background: rgb(0 0 0 / 43%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  color: white;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 0.3rem 1rem 0.35rem 1rem;
+  border-radius: 0 0 18px 18px;
+  border: 1px solid rgba(255,255,255,0.12);
+  border-top: none;
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+  min-width: 90px;
+  cursor: pointer;
+  outline: none; /* Menghilangkan border biru saat di-tap di HP */
+}
+
+#collab-notch-info {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: opacity 0.2s;
+}
+
+#collab-notch-info:hover {
+  opacity: 0.7;
+}
+
+#collab-notch-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 6px #4ade80;
+  flex-shrink: 0;
+  animation: denyut 2s ease-in-out infinite;
+}
+
+@keyframes denyut {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Tombol Keluar (Awalnya tersembunyi) */
+#tombol-keluar-room {
+  font-family: var(--font-utama);
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  background: rgba(255,60,60,0.25);
+  border: 1px solid rgba(255,100,100,0.35);
+  color: white;
+  white-space: nowrap;
+  
+  /* Animasi menyembunyikan ke samping */
+  max-width: 0;
+  opacity: 0;
+  padding: 0.2rem 0;
+  margin-left: 0;
+  border-width: 0;
+  border-radius: 20px;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* State saat Notch di-hover (Desktop) atau di-tap (Mobile/Focus) */
+#collab-notch-pill:hover,
+#collab-notch-pill:focus-within,
+#collab-notch-pill:active {
+  padding-left: 1rem;
+  padding-right: 0.4rem;
+    border-radius: 0 0 18px 18px;
+}
+
+#collab-notch-pill:hover #tombol-keluar-room,
+#collab-notch-pill:focus-within #tombol-keluar-room,
+#collab-notch-pill:active #tombol-keluar-room {
+  max-width: 80px;
+  opacity: 1;
+  padding: 0.2rem 0.65rem;
+  margin-left: 0.8rem;
+  border-width: 1px;
+  pointer-events: auto;
+}
+
+#tombol-keluar-room:hover {
+  background: rgba(255,60,60,0.4);
+}
+
+.hamburger {
+  display: none;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  cursor: pointer;
+  z-index: 101;
+}
+
+@media (max-width: 768px) {
+  .hamburger {
+    display: block;
+  }
+
+  .navigasi {
+    position: fixed;
+    top: 0;
+    right: -100%;
+    width: 70%;
+    height: 100vh;
+    background: rgba(10, 10, 10, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    transition: right 0.3s ease;
+    z-index: 100;
+  }
+
+  .navigasi.tampil {
+    right: 0;
+  }
+
+  .navigasi ul {
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+  }
+
+  .navigasi a {
+    font-size: 1.2rem;
+  }
+}
